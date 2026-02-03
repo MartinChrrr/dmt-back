@@ -12,14 +12,13 @@ services:
 
   web:
     build: .
-    command: sleep infinity
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - DEBUG=1
-      - DATABASE_URL=postgresql://django_user_admin:qwerty12345@db:5432/devis_factures_db
     depends_on:
       - db
 
