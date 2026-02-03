@@ -24,5 +24,5 @@ COPY . /app/
 # Expose le port
 EXPOSE 8000
 
-# Commande de démarrage
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# CHANGE CETTE LIGNE pour garder le conteneur actif
+CMD ["sleep", "infinity"]
