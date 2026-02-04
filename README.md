@@ -87,6 +87,15 @@ docker compose exec web python manage.py shell
 # Migrations
 docker compose exec web python manage.py makemigrations
 docker compose exec web python manage.py migrate
+
+# Create SuperUser
+python manage.py createsuperuser
+Username: admin
+Email address: admin@example.com
+Password: **********
+Password (again): *********
+
+Superuser created successfully.
 ```
 
 ## Configuration
