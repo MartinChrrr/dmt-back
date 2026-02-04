@@ -45,8 +45,8 @@ class UserConfiguration(models.Model):
     next_invoice_number = models.IntegerField(default=1, verbose_name="Prochain numéro de facture")
     
     # Préfixes
-    quote_prefix = models.CharField(max_length=10, default="QUO", verbose_name="Préfixe devis")
-    invoice_prefix = models.CharField(max_length=10, default="INV", verbose_name="Préfixe facture")
+    quote_prefix = models.CharField(max_length=10, default="DEV", verbose_name="Préfixe devis")
+    invoice_prefix = models.CharField(max_length=10, default="FAC", verbose_name="Préfixe facture")
     
     # Délais par défaut
     payment_deadline_days = models.IntegerField(default=30, verbose_name="Délai de paiement (jours)")

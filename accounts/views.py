@@ -75,7 +75,7 @@ def user_profile(request):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
+#GET AND PUT
 class UserConfigurationView(generics.RetrieveUpdateAPIView):
     """Voir et modifier la configuration utilisateur"""
     serializer_class = UserConfigurationSerializer
