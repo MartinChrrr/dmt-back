@@ -2,6 +2,7 @@ from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied 
 
 from .models import Client, Adresse
 from .serializers import ClientSerializer, AdresseSerializer
@@ -41,5 +42,5 @@ class AdresseViewSet(viewsets.ModelViewSet):
         """Vérifie que le client appartient bien à l'utilisateur connecté"""
         client = serializer.validated_data['client']
         if client.utilisateur != self.request.user:
-            raise PermissionError("Ce client ne vous appartient pas")
+            raise PermissionDenied("Ce client ne vous appartient pas")
         serializer.save()

@@ -73,7 +73,8 @@ class Adresse(models.Model):
     class Meta:
         verbose_name = "Adresse"
         verbose_name_plural = "Adresses"
-
+        ordering =['id']
+        
     def __str__(self):
         return f"{self.get_type_display()} - {self.ligne1}, {self.code_postal} {self.ville}"
 
