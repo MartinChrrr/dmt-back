@@ -139,3 +139,15 @@ docker compose exec web python manage.py migrate
 
 # 5. Relance les tests
 docker compose exec web python manage.py test clients -v 2
+
+
+## Tests clients
+
+# 1. Crée ma mgration
+docker compose exec web python manage.py makemigrations accounts
+
+# 2. Applique
+docker compose exec web python manage.py migrate
+
+# 3. Lance les tests
+docker compose exec web python manage.py test accounts -v 2
