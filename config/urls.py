@@ -8,7 +8,7 @@ urlpatterns = [
     path('api/auth/', include('accounts.urls')),
     path('api/clients/', include('clients.urls')),
     #path('api/services/', include('services.urls')),
-    #path('api/quotes/', include('quotes.urls')),
+    path('api/quotes/', include('quotes.urls')),
     #path('api/invoices/', include('invoices.urls')),
 ]
 
