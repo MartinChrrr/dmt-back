@@ -51,6 +51,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      - name: Vérifier que les migrations sont à jour
+        run: python manage.py makemigrations --check --dry-run
+        env:
+          DATABASE_HOST: localhost
+
+      - name: Appliquer les migrations
+        run: python manage.py migrate --verbosity=0
+        env:
+          DATABASE_HOST: localhost
 
       - name: Lancer les tests
         run: python manage.py test --verbosity=2
