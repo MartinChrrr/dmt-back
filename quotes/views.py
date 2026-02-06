@@ -38,11 +38,11 @@ class DevisViewSet(viewsets.ModelViewSet):
     ordering = ['-date_emission']
     
     def get_queryset(self):
-        # Retourne les devis non supprimés
+    # Retourne les devis non supprimés
         return Devis.objects.all()
     
     def destroy(self, request, pk=None):
-        # Soft delete d'un devis
+    # Soft delete d'un devis
         devis = self.get_object()
         devis.delete()
         return Response(
