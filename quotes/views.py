@@ -52,12 +52,11 @@ class DevisViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def changer_statut(self, request, pk=None):
-        """
-        Change le statut d'un devis et crée une entrée dans l'historique
+    # Change le statut d'un devis et crée une entrée dans l'historique
         
-        URL: POST /api/devis/{id}/changer_statut/
-        Body: {"statut": "ENVOYE"}
-        """
+    # URL: POST /api/devis/{id}/changer_statut/
+    # Body: {"statut": "ENVOYE"}
+
         devis = self.get_object()
         nouveau_statut = request.data.get('statut')
         
@@ -94,26 +93,15 @@ class DevisViewSet(viewsets.ModelViewSet):
 
 
 class LigneDevisViewSet(viewsets.ModelViewSet):
-    """
-    API pour gérer les lignes de devis
-    
-    Endpoints disponibles:
-    - GET    /api/lignes-devis/       -> Liste toutes les lignes
-    - POST   /api/lignes-devis/       -> Créer une ligne
-    - GET    /api/lignes-devis/{id}/  -> Détail d'une ligne
-    - PUT    /api/lignes-devis/{id}/  -> Modifier une ligne
-    - DELETE /api/lignes-devis/{id}/  -> Supprimer une ligne (soft delete)
-    """
-    
     serializer_class = LigneDevisSerializer
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        """Retourne les lignes non supprimées"""
+        # Retourne les lignes non supprimées
         return LigneDevis.objects.all()
     
     def destroy(self, request, pk=None):
-        """Soft delete d'une ligne"""
+        # Soft delete d'une ligne
         ligne = self.get_object()
         ligne.delete()
         return Response(
@@ -123,17 +111,9 @@ class LigneDevisViewSet(viewsets.ModelViewSet):
 
 
 class HistoriqueDevisViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    API pour consulter l'historique des devis (lecture seule)
-    
-    Endpoints disponibles:
-    - GET /api/historique-devis/       -> Liste tout l'historique
-    - GET /api/historique-devis/{id}/  -> Détail d'une entrée
-    """
-    
     serializer_class = HistoriqueDevisSerializer
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        """Retourne l'historique non supprimé"""
+        # Retourne l'historique non supprimé
         return HistoriqueDevis.objects.all().order_by('-created_at')
