@@ -1,6 +1,3 @@
-# Serializers pour les devis
-# Transforme les objets Python en JSON et vice-versa
-
 from rest_framework import serializers
 from .models import Devis, LigneDevis, HistoriqueDevis
 
@@ -10,7 +7,6 @@ class LigneDevisSerializer(serializers.ModelSerializer):
         model = LigneDevis
         fields = [
             'id',
-            'devis',
             'ordre',
             'libelle',
             'description',
@@ -38,8 +34,9 @@ class HistoriqueDevisSerializer(serializers.ModelSerializer):
 
 
 class DevisSerializer(serializers.ModelSerializer):
-    # Inclure les relations (lignes et historique)
-    lignes = LigneDevisSerializer(many=True, read_only=True)
+    # Lignes modifiables (en lecture ET écriture)
+    lignes = LigneDevisSerializer(many=True, required=False)
+    # Historique en lecture seule
     historique = HistoriqueDevisSerializer(many=True, read_only=True)
     
     class Meta:
@@ -71,3 +68,36 @@ class DevisSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
+    
+    def create(self, validated_data):
+        # Extraire les lignes des données
+        lignes_data = validated_data.pop('lignes', [])
+        
+        devis = Devis.objects.create(**validated_data)
+        
+        for ligne_data in lignes_data:
+            LigneDevis.objects.create(devis=devis, **ligne_data)
+        
+        # Les totaux sont calculés automatiquement par le modèle
+        
+        return devis
+    
+    def update(self, instance, validated_data):
+        # Extraire les lignes des données
+        lignes_data = validated_data.pop('lignes', None)
+        
+        # Mettre à jour les champs du devis
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        if lignes_data is not None:
+            # Supprimer (soft delete) toutes les anciennes lignes
+            instance.lignes.all().delete()
+            
+            for ligne_data in lignes_data:
+                LigneDevis.objects.create(devis=instance, **ligne_data)
+        
+        # Les totaux sont recalculés automatiquement par le modèle
+        
+        return instance
