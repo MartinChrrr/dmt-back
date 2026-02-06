@@ -47,7 +47,7 @@ class Devis(SoftDeleteModel):
     
     utilisateur_id = models.IntegerField(verbose_name='ID Utilisateur')
     client_id = models.IntegerField(verbose_name='ID Client')
-    numero = models.CharField(max_length=50, unique=True, verbose_name='Numéro')
+    numero = models.CharField(max_length=50, unique=True, blank=True, verbose_name='Numéro')
     date_emission = models.DateField(default=timezone.now, verbose_name='Date d\'émission')
     date_validite = models.DateField(verbose_name='Date de validité')
     statut = models.CharField(
@@ -74,6 +74,37 @@ class Devis(SoftDeleteModel):
     def __str__(self):
         return f"{self.numero}"
     
+    def save(self, *args, **kwargs):
+        # Génère automatiquement le numéro si vide
+        if not self.numero:
+            self.numero = self.generer_numero()
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def generer_numero():
+        # Génère un numéro unique au format DEV-YYYY-XXX
+        from datetime import datetime
+        annee = datetime.now().year
+        prefix = f"DEV-{annee}-"
+        
+        # Chercher le dernier numéro de l'année
+        dernier = Devis.all_objects.filter(
+            numero__startswith=prefix
+        ).order_by('-numero').first()
+        
+        if dernier:
+            try:
+                # Extraire le numéro et l'incrémenter
+                dernier_num = int(dernier.numero.split('-')[-1])
+                nouveau_num = dernier_num + 1
+            except (ValueError, IndexError):
+                nouveau_num = 1
+        else:
+            nouveau_num = 1
+        
+        return f"{prefix}{nouveau_num:03d}"
+
+    
     def calculer_totaux(self):
         # Calcule les totaux HT, TVA et TTC
         lignes = self.lignes.filter(deleted_at__isnull=True)
@@ -96,7 +127,7 @@ class Devis(SoftDeleteModel):
 
 
 class LigneDevis(SoftDeleteModel):
-    """Ligne d'un devis"""
+    # Ligne d'un devis
     devis = models.ForeignKey(
         Devis,
         on_delete=models.CASCADE,
