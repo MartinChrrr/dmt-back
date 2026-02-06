@@ -43,7 +43,7 @@ class DevisSerializer(serializers.ModelSerializer):
         model = Devis
         fields = [
             'id',
-            'utilisateur_id',
+            'utilisateur',
             'client_id',
             'numero',
             'date_emission',

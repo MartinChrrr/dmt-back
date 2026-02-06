@@ -32,7 +32,7 @@ class DevisViewSet(viewsets.ModelViewSet):
     
     # Configuration des filtres et recherche
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['statut', 'client_id', 'utilisateur_id']
+    filterset_fields = ['statut', 'client_id', 'utilisateur']
     search_fields = ['numero', 'objet']
     ordering_fields = ['date_emission', 'total_ttc', 'created_at']
     ordering = ['-date_emission']
