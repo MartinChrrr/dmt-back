@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from decimal import Decimal
+from django.conf import settings
 
 
 # SOFT DELETE
@@ -45,7 +46,12 @@ class Devis(SoftDeleteModel):
         (STATUT_EXPIRE, 'Expiré'),
     ]
     
-    utilisateur_id = models.IntegerField(verbose_name='ID Utilisateur')
+    utilisateur = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='devis',
+        verbose_name='Utilisateur'
+    )
     client_id = models.IntegerField(verbose_name='ID Client')
     numero = models.CharField(max_length=50, unique=True, blank=True, verbose_name='Numéro')
     date_emission = models.DateField(default=timezone.now, verbose_name='Date d\'émission')
