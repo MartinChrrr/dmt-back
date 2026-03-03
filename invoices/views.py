@@ -6,6 +6,7 @@ from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, DateFromToRangeFilter
 from .models import Facture, HistoriqueFacture
 from .serializers import FactureSerializer, FactureFromDevisSerializer
+from rest_framework.permissions import IsAuthenticated
 
 
 # -------------------------------------------------------------------------
@@ -44,8 +45,10 @@ class FactureViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = FactureSerializer
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    permission_classes = [IsAuthenticated] 
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = FactureFilter
+    search_fields = ['numero', 'objet']
     ordering_fields = ['date_emission', 'date_echeance', 'created_at', 'total_ttc']
     ordering = ['-date_emission', '-created_at']
 

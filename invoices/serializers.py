@@ -3,6 +3,8 @@ from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
 from .models import Facture, LigneFacture, HistoriqueFacture
+from clients.models import Client
+from clients.serializers import ClientSerializer
 
 
 class LigneFactureSerializer(serializers.ModelSerializer):
@@ -32,6 +34,12 @@ class HistoriqueFactureSerializer(serializers.ModelSerializer):
 
 
 class FactureSerializer(serializers.ModelSerializer):
+    client = ClientSerializer(read_only=True)
+    client_id = serializers.PrimaryKeyRelatedField(
+        queryset=Client.objects.all(),
+        source='client',
+        write_only=True,
+    )
     lignes = LigneFactureSerializer(many=True)
     historique = HistoriqueFactureSerializer(many=True, read_only=True)
     date_echeance = serializers.DateField(required=False, allow_null=True)
@@ -45,6 +53,7 @@ class FactureSerializer(serializers.ModelSerializer):
             'id',
             'utilisateur',
             'client',
+            'client_id',
             'devis_origine',
             'numero',
             'date_emission',

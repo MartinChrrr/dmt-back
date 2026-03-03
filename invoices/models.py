@@ -1,3 +1,4 @@
+from datetime import date
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -75,7 +76,7 @@ class Facture(SoftDeleteModel):
         blank=True,
         verbose_name='Numéro',
     )
-    date_emission = models.DateField(default=timezone.now, verbose_name="Date d'émission")
+    date_emission = models.DateField(default=date.today, verbose_name="Date d'émission")
     date_echeance = models.DateField(verbose_name='Date d\'échéance')
     statut = models.CharField(
         max_length=20,
