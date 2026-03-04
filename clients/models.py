@@ -25,6 +25,7 @@ class Client(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Date de modification")
 
     class Meta:
+        db_table = 'clients_client'
         verbose_name = "Client"
         verbose_name_plural = "Clients"
         ordering = ['raison_sociale']

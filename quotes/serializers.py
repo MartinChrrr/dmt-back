@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from clients.serializers import ClientSerializer
+from clients.models import Client
 from .models import Devis, LigneDevis, HistoriqueDevis
 
 
@@ -39,12 +41,24 @@ class DevisSerializer(serializers.ModelSerializer):
     # Read-only history
     historique = HistoriqueDevisSerializer(many=True, read_only=True)
     
+    # Afficher les données complètes du client en lecture
+    client = ClientSerializer(read_only=True)
+    
+    # Accepter l'ID du client en écriture
+    client_id = serializers.PrimaryKeyRelatedField(
+        queryset=Client.objects.all(),
+        source='client',
+        write_only=True
+    )
+    
+
     class Meta:
         model = Devis
         fields = [
             'id',
             'utilisateur',
             'client_id',
+            'client',
             'numero',
             'date_emission',
             'date_validite',
