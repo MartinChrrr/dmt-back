@@ -52,7 +52,12 @@ class Devis(SoftDeleteModel):
         related_name='devis',
         verbose_name='Utilisateur'
     )
-    client_id = models.IntegerField(verbose_name='ID Client')
+    client = models.ForeignKey(
+        'clients.Client',  # Référence au modèle Client
+        on_delete=models.PROTECT,  # Empêche de supprimer un client avec des devis
+        related_name='devis',
+        verbose_name='Client'
+    )
     numero = models.CharField(max_length=50, unique=True, blank=True, verbose_name='Numéro')
     date_emission = models.DateField(default=timezone.now, verbose_name='Date d\'émission')
     date_validite = models.DateField(verbose_name='Date de validité')

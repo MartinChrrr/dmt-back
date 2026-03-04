@@ -34,9 +34,9 @@ class HistoriqueDevisSerializer(serializers.ModelSerializer):
 
 
 class DevisSerializer(serializers.ModelSerializer):
-    # Lignes modifiables (en lecture ET écriture)
+    # Modifiable lines (read AND write)
     lignes = LigneDevisSerializer(many=True, required=False)
-    # Historique en lecture seule
+    # Read-only history
     historique = HistoriqueDevisSerializer(many=True, read_only=True)
     
     class Meta:
@@ -71,33 +71,33 @@ class DevisSerializer(serializers.ModelSerializer):
         ]
     
     def create(self, validated_data):
-        # Extraire les lignes des données
+        # Extract data rows
         lignes_data = validated_data.pop('lignes', [])
         
-        # Créer le devis
+        # Create the quotation
         devis = Devis.objects.create(**validated_data)
         
-        # Créer les lignes
+        # Create the lines
         for ligne_data in lignes_data:
             LigneDevis.objects.create(devis=devis, **ligne_data)
         
-        # Créer une entrée dans l'historique pour la création
+        # Create an entry in the history for the creation
         HistoriqueDevis.objects.create(
             devis=devis,
-            ancien_statut=None,  # Pas d'ancien statut car c'est une création
-            nouveau_statut=devis.statut  # Le statut initial du devis
+            ancien_statut=None,  # No previous status as it is a new creation
+            nouveau_statut=devis.statut  # The initial status of the quotation
         )
         
-        # Vider le cache de la relation historique
+        # Clear the cache of the historical relationship
         if hasattr(devis, '_prefetched_objects_cache'):
             delattr(devis, '_prefetched_objects_cache')
 
 
-        # Les totaux sont calculés automatiquement par le modèle
+        # Totals are calculated automatically by the model.
         return devis
     
     def update(self, instance, validated_data):
-        # Extraire les lignes des données
+        # Extract data lines
         lignes_data = validated_data.pop('lignes', None)
         
         # Détecter si le statut change
