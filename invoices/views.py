@@ -2,10 +2,14 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db import transaction
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, DateFromToRangeFilter
+import weasyprint
 from .models import Facture, HistoriqueFacture
 from .serializers import FactureSerializer, FactureFromDevisSerializer
+from clients.models import Adresse
 from rest_framework.permissions import IsAuthenticated
 
 
@@ -170,3 +174,41 @@ class FactureViewSet(viewsets.ModelViewSet):
             FactureSerializer(facture).data,
             status=status.HTTP_201_CREATED,
         )
+
+    # -------------------------------------------------------------------------
+    # Action : générer le PDF
+    # -------------------------------------------------------------------------
+
+    @action(detail=True, methods=['get'], url_path='pdf')
+    def generer_pdf(self, request, pk=None):
+        """
+        GET /invoices/{id}/pdf/
+        Génère et retourne le PDF de la facture.
+        """
+        facture = self.get_object()
+        lignes = facture.lignes.all()
+
+        # Adresse de facturation du client (fallback sur siège)
+        adresse = (
+            Adresse.objects
+            .filter(client=facture.client, type=Adresse.TypeAdresse.FACTURATION)
+            .first()
+        ) or (
+            Adresse.objects
+            .filter(client=facture.client, type=Adresse.TypeAdresse.SIEGE)
+            .first()
+        )
+
+        html = render_to_string('invoices/facture_pdf.html', {
+            'facture': facture,
+            'lignes': lignes,
+            'adresse': adresse,
+            'utilisateur': facture.utilisateur,
+        })
+
+        pdf = weasyprint.HTML(string=html).write_pdf()
+
+        filename = f"{facture.numero or f'brouillon-{facture.pk}'}.pdf"
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
