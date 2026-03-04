@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.conf import settings
 from django.db import models
 # Create your models here.
@@ -11,12 +12,12 @@ class Prestation(models.Model):
     ]
 
     VAT = [
-        ("20.00", "20%"),
-        ("10.00", "10%"),
-        ("5.50", "5.5%"),
-        ("0.00", "0%"),
+        (Decimal("20.00"), "20%"),
+        (Decimal("10.00"), "10%"),
+        (Decimal("5.50"), "5.5%"),
+        (Decimal("0.00"), "0%"),
     ]
-    
+        
     user = models.ForeignKey(
     settings.AUTH_USER_MODEL,
     on_delete=models.CASCADE,
