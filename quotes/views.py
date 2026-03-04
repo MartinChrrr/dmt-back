@@ -39,8 +39,7 @@ class DevisViewSet(viewsets.ModelViewSet):
     ordering = ['-date_emission']
     
     def get_queryset(self):
-    # Retourne les devis non supprimés
-        return Devis.objects.all()
+        return Devis.objects.filter(utilisateur=self.request.user)
     
     def perform_create(self, serializer):
         serializer.save(utilisateur=self.request.user)
@@ -101,8 +100,7 @@ class LigneDevisViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        # Retourne les lignes non supprimées
-        return LigneDevis.objects.all()
+        return LigneDevis.objects.filter(devis__utilisateur=self.request.user)
     
     def destroy(self, request, pk=None):
         # Soft delete d'une ligne
@@ -119,5 +117,4 @@ class HistoriqueDevisViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        # Retourne l'historique non supprimé
-        return HistoriqueDevis.objects.all().order_by('-created_at')
+        return HistoriqueDevis.objects.filter(devis__utilisateur=self.request.user).order_by('-created_at')
