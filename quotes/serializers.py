@@ -40,10 +40,13 @@ class DevisSerializer(serializers.ModelSerializer):
     lignes = LigneDevisSerializer(many=True, required=False)
     # Read-only history
     historique = HistoriqueDevisSerializer(many=True, read_only=True)
-    
+
+    # Utilisateur assigné automatiquement via le token (read-only)
+    utilisateur = serializers.PrimaryKeyRelatedField(read_only=True)
+
     # Afficher les données complètes du client en lecture
     client = ClientSerializer(read_only=True)
-    
+
     # Accepter l'ID du client en écriture
     client_id = serializers.PrimaryKeyRelatedField(
         queryset=Client.objects.all(),

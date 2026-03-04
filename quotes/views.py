@@ -16,7 +16,7 @@ from .serializers import DevisSerializer, LigneDevisSerializer, HistoriqueDevisS
 class DevisViewSet(viewsets.ModelViewSet):
     queryset = Devis.objects.all()
     serializer_class = DevisSerializer
-    #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     """
     API pour gérer les devis
     
