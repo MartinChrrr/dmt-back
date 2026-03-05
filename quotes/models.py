@@ -8,45 +8,45 @@ from django.conf import settings
 # SOFT DELETE
 
 class SoftDeleteManager(models.Manager):
-    # Manager qui exclut automatiquement les objets supprimés
+    # Manager that automatically excludes deleted objects
     def get_queryset(self):
         return super().get_queryset().filter(deleted_at__isnull=True)
 
 
 class SoftDeleteModel(models.Model):
-    # Modèle abstrait pour le soft delete
+    # Abstract model for soft delete
     deleted_at = models.DateTimeField(null=True, blank=True, verbose_name="Date de suppression")
-    
+
     objects = SoftDeleteManager()
     all_objects = models.Manager()
-    
+
     class Meta:
         abstract = True
-    
+
     def delete(self, *args, **kwargs):
-        # Soft delete : marque comme supprimé
+        # Soft delete: mark as deleted
         self.deleted_at = timezone.now()
         self.save()
 
 
-# DEVIS
+# QUOTE
 
-class Devis(SoftDeleteModel):
-    # Devis émis par l'utilisateur
+class Quote(SoftDeleteModel):
+    # Quote issued by the user
     STATUT_BROUILLON = 'BROUILLON'
     STATUT_ENVOYE = 'ENVOYE'
     STATUT_ACCEPTE = 'ACCEPTE'
     STATUT_REFUSE = 'REFUSE'
     STATUT_EXPIRE = 'EXPIRE'
-    
+
     STATUT_CHOICES = [
-        (STATUT_BROUILLON, 'Brouillon'),
-        (STATUT_ENVOYE, 'Envoyé'),
-        (STATUT_ACCEPTE, 'Accepté'),
-        (STATUT_REFUSE, 'Refusé'),
-        (STATUT_EXPIRE, 'Expiré'),
+        (STATUT_BROUILLON, 'Draft'),
+        (STATUT_ENVOYE, 'Sent'),
+        (STATUT_ACCEPTE, 'Accepted'),
+        (STATUT_REFUSE, 'Refused'),
+        (STATUT_EXPIRE, 'Expired'),
     ]
-    
+
     utilisateur = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -54,8 +54,8 @@ class Devis(SoftDeleteModel):
         verbose_name='Utilisateur'
     )
     client = models.ForeignKey(
-        'clients.Client',  # Référence au modèle Client
-        on_delete=models.PROTECT,  # Empêche de supprimer un client avec des devis
+        'clients.Client',
+        on_delete=models.PROTECT,
         related_name='devis',
         verbose_name='Client'
     )
@@ -73,70 +73,69 @@ class Devis(SoftDeleteModel):
     total_ht = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name='Total HT')
     total_tva = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name='Total TVA')
     total_ttc = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name='Total TTC')
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = 'devis'
         ordering = ['-date_emission', '-created_at']
         verbose_name = 'Devis'
         verbose_name_plural = 'Devis'
-    
+
     def __str__(self):
         return f"{self.numero}"
 
     @property
-    def est_modifiable(self):
+    def is_editable(self):
         return self.statut == self.STATUT_BROUILLON
 
     @property
-    def est_supprimable(self):
+    def is_deletable(self):
         return self.statut == self.STATUT_BROUILLON
 
     def save(self, *args, **kwargs):
-        # Génère automatiquement le numéro si vide
+        # Automatically generate the number if empty
         if not self.numero:
-            self.numero = self._generer_numero()
+            self.numero = self._generate_number()
         super().save(*args, **kwargs)
 
-    def _generer_numero(self):
+    def _generate_number(self):
         from datetime import datetime
         from accounts.models import UserConfiguration
 
         config, _ = UserConfiguration.objects.get_or_create(user=self.utilisateur)
         prefix = config.quote_prefix
-        annee = datetime.now().year
-        numero = f"{prefix}-{annee}-{config.next_quote_number:03d}"
+        year = datetime.now().year
+        number = f"{prefix}-{year}-{config.next_quote_number:03d}"
         config.next_quote_number += 1
         config.save()
-        return numero
+        return number
 
-    
-    def calculer_totaux(self):
-        # Calcule les totaux HT, TVA et TTC
-        lignes = self.lignes.filter(deleted_at__isnull=True)
-        
-        self.total_ht = sum(ligne.montant_ht for ligne in lignes) or Decimal('0.00')
-        self.total_tva = sum(ligne.montant_ht * (ligne.taux_tva / 100) for ligne in lignes) or Decimal('0.00')
+    def calculate_totals(self):
+        # Calculate totals: excl. tax, VAT and incl. tax
+        lines = self.lignes.filter(deleted_at__isnull=True)
+
+        self.total_ht = sum(line.montant_ht for line in lines) or Decimal('0.00')
+        self.total_tva = sum(line.montant_ht * (line.taux_tva / 100) for line in lines) or Decimal('0.00')
         self.total_ttc = self.total_ht + self.total_tva
         self.save()
-    
+
     def delete(self, *args, **kwargs):
-        if not self.est_supprimable:
-            raise ValueError("Impossible de supprimer un devis qui n'est pas en brouillon.")
-        # Soft delete en cascade
-        for ligne in self.lignes.all():
-            ligne.delete()
-        for historique in self.historique.all():
-            historique.delete()
+        if not self.is_deletable:
+            raise ValueError("Cannot delete a quote that is not in draft status.")
+        # Cascading soft delete
+        for line in self.lignes.all():
+            line.delete()
+        for history in self.historique.all():
+            history.delete()
         super().delete(*args, **kwargs)
 
 
-class LigneDevis(SoftDeleteModel):
-    # Ligne d'un devis
+class QuoteLine(SoftDeleteModel):
+    # Line of a quote
     devis = models.ForeignKey(
-        Devis,
+        Quote,
         on_delete=models.CASCADE,
         related_name='lignes',
         verbose_name='Devis'
@@ -167,35 +166,35 @@ class LigneDevis(SoftDeleteModel):
         decimal_places=2,
         verbose_name='Montant HT'
     )
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         db_table = 'lignes_devis'
         ordering = ['ordre', 'id']
         verbose_name = 'Ligne de devis'
         verbose_name_plural = 'Lignes de devis'
-    
+
     def __str__(self):
         return f"{self.devis.numero} - {self.libelle}"
-    
+
     def save(self, *args, **kwargs):
-        # Calcule le montant HT et met à jour les totaux du devis
+        # Calculate the excl. tax amount and update quote totals
         self.montant_ht = self.quantite * self.prix_unitaire_ht
         super().save(*args, **kwargs)
-        self.devis.calculer_totaux()
-    
+        self.devis.calculate_totals()
+
     def delete(self, *args, **kwargs):
-        # Soft delete et recalcul des totaux
-        devis = self.devis
+        # Soft delete and recalculate totals
+        quote = self.devis
         super().delete(*args, **kwargs)
-        devis.calculer_totaux()
+        quote.calculate_totals()
 
 
-class HistoriqueDevis(SoftDeleteModel):
-    # Historique des changements de statut
+class QuoteHistory(SoftDeleteModel):
+    # Status change history
     devis = models.ForeignKey(
-        Devis,
+        Quote,
         on_delete=models.CASCADE,
         related_name='historique',
         verbose_name='Devis'
@@ -208,14 +207,14 @@ class HistoriqueDevis(SoftDeleteModel):
     )
     nouveau_statut = models.CharField(max_length=20, verbose_name='Nouveau statut')
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         db_table = 'historique_devis'
         ordering = ['-created_at']
         verbose_name = 'Historique de devis'
         verbose_name_plural = 'Historiques de devis'
-    
+
     def __str__(self):
         if self.ancien_statut:
             return f"{self.devis.numero} - {self.ancien_statut} → {self.nouveau_statut}"
-        return f"{self.devis.numero} - Création"
+        return f"{self.devis.numero} - Creation"

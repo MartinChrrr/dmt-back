@@ -3,8 +3,8 @@ from django.conf import settings
 
 class Client(models.Model):
     """
-    Client d'un utilisateur.
-    Peut être une entreprise ou un particulier.
+    User's client.
+    Can be a company or an individual.
     """
     utilisateur = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -40,15 +40,15 @@ class Client(models.Model):
         return self.raison_sociale
 
 
-class Adresse(models.Model):
+class Address(models.Model):
     """
-    Adresse associée à un client.
-    Un client peut avoir plusieurs adresses (siège, facturation, livraison).
+    Address associated with a client.
+    A client can have multiple addresses (headquarters, billing, delivery).
     """
-    class TypeAdresse(models.TextChoices):
-        SIEGE = 'SIEGE', 'Siège social'
-        FACTURATION = 'FACTURATION', 'Facturation'
-        LIVRAISON = 'LIVRAISON', 'Livraison'
+    class AddressType(models.TextChoices):
+        SIEGE = 'SIEGE', 'Headquarters'
+        FACTURATION = 'FACTURATION', 'Billing'
+        LIVRAISON = 'LIVRAISON', 'Delivery'
 
     client = models.ForeignKey(
         Client,
@@ -58,8 +58,8 @@ class Adresse(models.Model):
     )
     type = models.CharField(
         max_length=20,
-        choices=TypeAdresse.choices,
-        default=TypeAdresse.SIEGE,
+        choices=AddressType.choices,
+        default=AddressType.SIEGE,
         verbose_name="Type d'adresse"
     )
     ligne1 = models.CharField(max_length=255, verbose_name="Adresse ligne 1")
@@ -72,19 +72,19 @@ class Adresse(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Date de modification")
 
     class Meta:
-        verbose_name = "Adresse"
-        verbose_name_plural = "Adresses"
+        verbose_name = "Address"
+        verbose_name_plural = "Addresses"
         ordering =['id']
-        
+
     def __str__(self):
         return f"{self.get_type_display()} - {self.ligne1}, {self.code_postal} {self.ville}"
 
     @property
-    def adresse_complete(self):
-        lignes = [self.ligne1]
+    def full_address(self):
+        lines = [self.ligne1]
         if self.ligne2:
-            lignes.append(self.ligne2)
-        lignes.append(f"{self.code_postal} {self.ville}")
+            lines.append(self.ligne2)
+        lines.append(f"{self.code_postal} {self.ville}")
         if self.pays != 'France':
-            lignes.append(self.pays)
-        return '\n'.join(lignes)
+            lines.append(self.pays)
+        return '\n'.join(lines)

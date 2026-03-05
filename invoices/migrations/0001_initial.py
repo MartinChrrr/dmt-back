@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('clients', '0001_initial'),
-        ('quotes', '0001_initial'),
+        ('quotes', '0002_rename_historiquedevis_quotehistory_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('client', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='factures', to='clients.client', verbose_name='Client')),
-                ('devis_origine', models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='facture', to='quotes.devis', verbose_name="Devis d'origine")),
+                ('devis_origine', models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='facture', to='quotes.quote', verbose_name="Devis d'origine")),
                 ('utilisateur', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='factures', to=settings.AUTH_USER_MODEL, verbose_name='Utilisateur')),
             ],
             options={

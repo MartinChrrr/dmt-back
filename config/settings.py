@@ -21,7 +21,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     
-    # Applications locales
+    # Local applications
     'accounts',
     'clients',
     'services',
@@ -118,10 +118,10 @@ REST_FRAMEWORK = {
 
 # JWT Configuration
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # Token d'accès valide 1h
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Token de refresh valide 7 jours
-    'ROTATE_REFRESH_TOKENS': True,  # Renouvelle le refresh token à chaque utilisation
-    'BLACKLIST_AFTER_ROTATION': True,  # Blacklist l'ancien refresh token
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # Access token valid for 1h
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Refresh token valid for 7 days
+    'ROTATE_REFRESH_TOKENS': True,  # Rotate refresh token on each use
+    'BLACKLIST_AFTER_ROTATION': True,  # Blacklist old refresh token
     'UPDATE_LAST_LOGIN': True,
     
     'ALGORITHM': 'HS256',

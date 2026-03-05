@@ -9,7 +9,7 @@ User = get_user_model()
 
 
 class RegisterTestCase(TestCase):
-    """Tests pour POST /api/auth/register/"""
+    """Tests for POST /api/auth/register/"""
 
     def setUp(self):
         self.api_client = APIClient()
@@ -26,7 +26,7 @@ class RegisterTestCase(TestCase):
         }
 
     def test_register_success(self):
-        """Inscription réussie retourne 201 + tokens"""
+        """Successful registration returns 201 + tokens"""
         response = self.api_client.post(
             self.register_url, self.valid_data, format='json'
         )
@@ -37,7 +37,7 @@ class RegisterTestCase(TestCase):
         self.assertEqual(response.data['user']['email'], 'nouveau@test.com')
 
     def test_register_creates_configuration(self):
-        """L'inscription crée automatiquement une UserConfiguration"""
+        """Registration automatically creates a UserConfiguration"""
         self.api_client.post(
             self.register_url, self.valid_data, format='json'
         )
@@ -47,7 +47,7 @@ class RegisterTestCase(TestCase):
         )
 
     def test_register_password_mismatch(self):
-        """Mots de passe différents → 400"""
+        """Different passwords -> 400"""
         data = {**self.valid_data, "password_confirm": "AutrePass123!"}
         response = self.api_client.post(
             self.register_url, data, format='json'
@@ -55,7 +55,7 @@ class RegisterTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_register_password_too_simple(self):
-        """Mot de passe trop simple → 400"""
+        """Too simple password -> 400"""
         data = {
             **self.valid_data,
             "password": "123",
@@ -67,7 +67,7 @@ class RegisterTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_register_email_required(self):
-        """Email obligatoire"""
+        """Email is required"""
         data = {**self.valid_data}
         del data['email']
         response = self.api_client.post(
@@ -76,7 +76,7 @@ class RegisterTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_register_first_last_name_required(self):
-        """Prénom et nom obligatoires"""
+        """First name and last name are required"""
         data = {**self.valid_data}
         del data['first_name']
         del data['last_name']
@@ -86,7 +86,7 @@ class RegisterTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_register_duplicate_email(self):
-        """Email déjà utilisé → 400"""
+        """Already used email -> 400"""
         User.objects.create_user(
             username='existant', email='nouveau@test.com',
             password='Testpass123!'
@@ -98,7 +98,7 @@ class RegisterTestCase(TestCase):
 
 
 class LoginTestCase(TestCase):
-    """Tests pour POST /api/auth/login/"""
+    """Tests for POST /api/auth/login/"""
 
     def setUp(self):
         self.api_client = APIClient()
@@ -109,7 +109,7 @@ class LoginTestCase(TestCase):
         )
 
     def test_login_with_email(self):
-        """Connexion avec email retourne les tokens"""
+        """Login with email returns tokens"""
         response = self.api_client.post(
             self.login_url,
             {"email": "test@test.com", "password": "Testpass123!"},
@@ -120,26 +120,26 @@ class LoginTestCase(TestCase):
         self.assertIn('refresh', response.data)
 
     def test_login_wrong_password(self):
-        """Mauvais mot de passe → 401"""
+        """Wrong password -> 401"""
         response = self.api_client.post(
             self.login_url,
-            {"email": "test@test.com", "password": "MauvaisPass!"},
+            {"email": "test@test.com", "password": "WrongPass!"},
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_login_nonexistent_user(self):
-        """Utilisateur inexistant → 401"""
+        """Nonexistent user -> 401"""
         response = self.api_client.post(
             self.login_url,
-            {"email": "inexistant@test.com", "password": "Testpass123!"},
+            {"email": "nonexistent@test.com", "password": "Testpass123!"},
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 class LogoutTestCase(TestCase):
-    """Tests pour POST /api/auth/logout/"""
+    """Tests for POST /api/auth/logout/"""
 
     def setUp(self):
         self.api_client = APIClient()
@@ -152,7 +152,7 @@ class LogoutTestCase(TestCase):
         self.api_client.force_authenticate(user=self.user)
 
     def test_logout_success(self):
-        """Déconnexion avec refresh token valide"""
+        """Logout with valid refresh token"""
         response = self.api_client.post(
             self.logout_url,
             {"refresh": str(self.refresh)},
@@ -161,13 +161,13 @@ class LogoutTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_logout_blacklists_token(self):
-        """Le refresh token est blacklisté après logout"""
+        """Refresh token is blacklisted after logout"""
         self.api_client.post(
             self.logout_url,
             {"refresh": str(self.refresh)},
             format='json'
         )
-        # Tenter de rafraîchir avec le même token
+        # Try to refresh with the same token
         self.api_client.force_authenticate(user=None)
         response = self.api_client.post(
             '/api/auth/token/refresh/',
@@ -177,7 +177,7 @@ class LogoutTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_logout_unauthenticated(self):
-        """Logout sans être connecté → 401"""
+        """Logout without being connected -> 401"""
         self.api_client.force_authenticate(user=None)
         response = self.api_client.post(
             self.logout_url,
@@ -188,7 +188,7 @@ class LogoutTestCase(TestCase):
 
 
 class TokenRefreshTestCase(TestCase):
-    """Tests pour POST /api/auth/token/refresh/"""
+    """Tests for POST /api/auth/token/refresh/"""
 
     def setUp(self):
         self.api_client = APIClient()
@@ -200,7 +200,7 @@ class TokenRefreshTestCase(TestCase):
         self.refresh = RefreshToken.for_user(self.user)
 
     def test_refresh_token_success(self):
-        """Rafraîchissement du token retourne un nouveau access"""
+        """Token refresh returns a new access token"""
         response = self.api_client.post(
             self.refresh_url,
             {"refresh": str(self.refresh)},
@@ -210,17 +210,17 @@ class TokenRefreshTestCase(TestCase):
         self.assertIn('access', response.data)
 
     def test_refresh_token_invalid(self):
-        """Token invalide → 401"""
+        """Invalid token -> 401"""
         response = self.api_client.post(
             self.refresh_url,
-            {"refresh": "token_invalide"},
+            {"refresh": "invalid_token"},
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 class CurrentUserTestCase(TestCase):
-    """Tests pour GET /api/auth/me/"""
+    """Tests for GET /api/auth/me/"""
 
     def setUp(self):
         self.api_client = APIClient()
@@ -233,7 +233,7 @@ class CurrentUserTestCase(TestCase):
         self.api_client.force_authenticate(user=self.user)
 
     def test_get_current_user(self):
-        """Retourne les infos de l'utilisateur connecté"""
+        """Returns the connected user's info"""
         response = self.api_client.get(self.me_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['email'], 'test@test.com')
@@ -241,14 +241,14 @@ class CurrentUserTestCase(TestCase):
         self.assertEqual(response.data['company_name'], 'Ma Boîte')
 
     def test_get_current_user_unauthenticated(self):
-        """Non connecté → 401"""
+        """Not connected -> 401"""
         self.api_client.force_authenticate(user=None)
         response = self.api_client.get(self.me_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 class UserProfileTestCase(TestCase):
-    """Tests pour GET/PUT/PATCH /api/auth/profile/"""
+    """Tests for GET/PUT/PATCH /api/auth/profile/"""
 
     def setUp(self):
         self.api_client = APIClient()
@@ -261,13 +261,13 @@ class UserProfileTestCase(TestCase):
         self.api_client.force_authenticate(user=self.user)
 
     def test_get_profile(self):
-        """GET retourne le profil"""
+        """GET returns the profile"""
         response = self.api_client.get(self.profile_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['email'], 'test@test.com')
 
     def test_patch_profile(self):
-        """PATCH modifie partiellement le profil"""
+        """PATCH partially updates the profile"""
         response = self.api_client.patch(
             self.profile_url,
             {"company_name": "Nouvelle Boîte", "phone": "06 12 34 56 78"},
@@ -278,7 +278,7 @@ class UserProfileTestCase(TestCase):
         self.assertEqual(response.data['phone'], '06 12 34 56 78')
 
     def test_put_profile(self):
-        """PUT modifie le profil"""
+        """PUT updates the profile"""
         response = self.api_client.put(
             self.profile_url,
             {
@@ -300,14 +300,14 @@ class UserProfileTestCase(TestCase):
         self.assertEqual(response.data['city'], 'Grenoble')
 
     def test_profile_unauthenticated(self):
-        """Non connecté → 401"""
+        """Not connected -> 401"""
         self.api_client.force_authenticate(user=None)
         response = self.api_client.get(self.profile_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 class UserConfigurationTestCase(TestCase):
-    """Tests pour GET/PUT/PATCH /api/auth/configuration/"""
+    """Tests for GET/PUT/PATCH /api/auth/configuration/"""
 
     def setUp(self):
         self.api_client = APIClient()
@@ -320,7 +320,7 @@ class UserConfigurationTestCase(TestCase):
         self.api_client.force_authenticate(user=self.user)
 
     def test_get_configuration(self):
-        """GET retourne la configuration avec les valeurs par défaut"""
+        """GET returns the configuration with default values"""
         response = self.api_client.get(self.config_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['quote_prefix'], 'DEV')
@@ -329,7 +329,7 @@ class UserConfigurationTestCase(TestCase):
         self.assertEqual(response.data['next_quote_number'], 1)
 
     def test_patch_configuration(self):
-        """PATCH modifie partiellement la configuration"""
+        """PATCH partially updates the configuration"""
         response = self.api_client.patch(
             self.config_url,
             {
@@ -345,7 +345,7 @@ class UserConfigurationTestCase(TestCase):
         self.assertEqual(response.data['payment_deadline_days'], 60)
 
     def test_configuration_isolation(self):
-        """Un utilisateur ne peut pas voir la config d'un autre"""
+        """A user cannot see another user's config"""
         other_user = User.objects.create_user(
             username='other', email='other@test.com',
             password='Testpass123!'
@@ -353,12 +353,12 @@ class UserConfigurationTestCase(TestCase):
         UserConfiguration.objects.create(
             user=other_user, quote_prefix='XXX'
         )
-        # La config retournée est celle de l'utilisateur connecté
+        # The returned config is that of the connected user
         response = self.api_client.get(self.config_url)
         self.assertEqual(response.data['quote_prefix'], 'DEV')
 
     def test_configuration_unauthenticated(self):
-        """Non connecté → 401"""
+        """Not connected -> 401"""
         self.api_client.force_authenticate(user=None)
         response = self.api_client.get(self.config_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

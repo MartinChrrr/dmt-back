@@ -6,17 +6,17 @@ from decimal import Decimal
 
 
 # -------------------------------------------------------------------------
-# SOFT DELETE (réutilisable — à terme, mutualiser dans un module commun)
+# SOFT DELETE (reusable — eventually to be shared in a common module)
 # -------------------------------------------------------------------------
 
 class SoftDeleteManager(models.Manager):
-    """Manager qui exclut automatiquement les objets supprimés"""
+    """Manager that automatically excludes deleted objects"""
     def get_queryset(self):
         return super().get_queryset().filter(deleted_at__isnull=True)
 
 
 class SoftDeleteModel(models.Model):
-    """Modèle abstrait pour le soft delete"""
+    """Abstract model for soft delete"""
     deleted_at = models.DateTimeField(null=True, blank=True, verbose_name="Date de suppression")
 
     objects = SoftDeleteManager()
@@ -26,27 +26,27 @@ class SoftDeleteModel(models.Model):
         abstract = True
 
     def delete(self, *args, **kwargs):
-        """Soft delete : marque comme supprimé"""
+        """Soft delete: mark as deleted"""
         self.deleted_at = timezone.now()
         self.save(update_fields=['deleted_at'])
 
 
 # -------------------------------------------------------------------------
-# FACTURE
+# INVOICE
 # -------------------------------------------------------------------------
 
-class Facture(SoftDeleteModel):
-    """Facture émise par l'utilisateur"""
+class Invoice(SoftDeleteModel):
+    """Invoice issued by the user"""
     STATUT_BROUILLON = 'BROUILLON'
     STATUT_ENVOYEE = 'ENVOYEE'
     STATUT_PAYEE = 'PAYEE'
     STATUT_EN_RETARD = 'EN_RETARD'
 
     STATUT_CHOICES = [
-        (STATUT_BROUILLON, 'Brouillon'),
-        (STATUT_ENVOYEE, 'Envoyée'),
-        (STATUT_PAYEE, 'Payée'),
-        (STATUT_EN_RETARD, 'En retard'),
+        (STATUT_BROUILLON, 'Draft'),
+        (STATUT_ENVOYEE, 'Sent'),
+        (STATUT_PAYEE, 'Paid'),
+        (STATUT_EN_RETARD, 'Overdue'),
     ]
 
     utilisateur = models.ForeignKey(
@@ -62,7 +62,7 @@ class Facture(SoftDeleteModel):
         verbose_name='Client',
     )
     devis_origine = models.OneToOneField(
-        'quotes.Devis',
+        'quotes.Quote',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -100,45 +100,45 @@ class Facture(SoftDeleteModel):
         verbose_name_plural = 'Factures'
 
     def __str__(self):
-        return self.numero or f"Brouillon #{self.pk}"
+        return self.numero or f"Draft #{self.pk}"
 
     @property
-    def est_modifiable(self):
+    def is_editable(self):
         return self.statut == self.STATUT_BROUILLON
 
     @property
-    def est_supprimable(self):
+    def is_deletable(self):
         return self.statut == self.STATUT_BROUILLON
 
-    def calculer_totaux(self):
-        """Calcule les totaux HT, TVA et TTC à partir des lignes"""
-        lignes = list(self.lignes.all())
+    def calculate_totals(self):
+        """Calculate totals: excl. tax, VAT and incl. tax from lines"""
+        lines = list(self.lignes.all())
 
-        self.total_ht = sum((ligne.montant_ht for ligne in lignes), Decimal('0.00'))
+        self.total_ht = sum((line.montant_ht for line in lines), Decimal('0.00'))
         self.total_tva = sum(
-            (ligne.montant_ht * ligne.taux_tva / Decimal('100') for ligne in lignes),
+            (line.montant_ht * line.taux_tva / Decimal('100') for line in lines),
             Decimal('0.00'),
         )
         self.total_ttc = self.total_ht + self.total_tva
         self.save(update_fields=['total_ht', 'total_tva', 'total_ttc'])
 
     def delete(self, *args, **kwargs):
-        """Soft delete — uniquement si BROUILLON"""
-        if not self.est_supprimable:
-            raise PermissionError("Seule une facture en brouillon peut être supprimée.")
+        """Soft delete — only if DRAFT"""
+        if not self.is_deletable:
+            raise PermissionError("Only a draft invoice can be deleted.")
         self.lignes.all().delete()
         self.historique.filter(deleted_at__isnull=True).update(deleted_at=timezone.now())
         super().delete(*args, **kwargs)
 
 
 # -------------------------------------------------------------------------
-# LIGNE FACTURE
+# INVOICE LINE
 # -------------------------------------------------------------------------
 
-class LigneFacture(models.Model):
-    """Ligne d'une facture (pas de soft delete, supprimée avec son parent)"""
+class InvoiceLine(models.Model):
+    """Invoice line (no soft delete, deleted with its parent)"""
     facture = models.ForeignKey(
-        Facture,
+        Invoice,
         on_delete=models.CASCADE,
         related_name='lignes',
         verbose_name='Facture',
@@ -182,22 +182,22 @@ class LigneFacture(models.Model):
     def __str__(self):
         return f"{self.facture} - {self.libelle}"
 
-    def save(self, *args, recalculer_totaux=True, **kwargs):
-        """Calcule le montant HT et met à jour les totaux de la facture"""
+    def save(self, *args, recalculate_totals=True, **kwargs):
+        """Calculate the excl. tax amount and update invoice totals"""
         self.montant_ht = self.quantite * self.prix_unitaire_ht
         super().save(*args, **kwargs)
-        if recalculer_totaux:
-            self.facture.calculer_totaux()
+        if recalculate_totals:
+            self.facture.calculate_totals()
 
 
 # -------------------------------------------------------------------------
-# HISTORIQUE FACTURE
+# INVOICE HISTORY
 # -------------------------------------------------------------------------
 
-class HistoriqueFacture(SoftDeleteModel):
-    """Historique des changements de statut"""
+class InvoiceHistory(SoftDeleteModel):
+    """Status change history"""
     facture = models.ForeignKey(
-        Facture,
+        Invoice,
         on_delete=models.CASCADE,
         related_name='historique',
         verbose_name='Facture',
@@ -220,4 +220,4 @@ class HistoriqueFacture(SoftDeleteModel):
     def __str__(self):
         if self.ancien_statut:
             return f"{self.facture} - {self.ancien_statut} → {self.nouveau_statut}"
-        return f"{self.facture} - Création"
+        return f"{self.facture} - Creation"

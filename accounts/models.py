@@ -1,15 +1,13 @@
 from django.db import models
-
-# Create your models here.
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
 class User(AbstractUser):
-    """Modèle utilisateur personnalisé"""
-    # On garde les champs de base de Django (username, password, etc.)
-    # Et on ajoute nos propres champs
-    
+    """Custom user model"""
+    # Keep Django's base fields (username, password, etc.)
+    # And add our own fields
+
     email = models.EmailField(unique=True, verbose_name="Email")
     company_name = models.CharField(max_length=255, blank=True, verbose_name="Nom de l'entreprise")
     siret = models.CharField(max_length=14, blank=True, verbose_name="SIRET")
@@ -18,9 +16,9 @@ class User(AbstractUser):
     city = models.CharField(max_length=100, blank=True, verbose_name="Ville")
     phone = models.CharField(max_length=20, blank=True, verbose_name="Téléphone")
 
-    # On dit à Django d'utiliser l'email pour se connecter au lieu du username
+    # Use email to log in instead of username
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']  # Champs demandés lors de createsuperuser
+    REQUIRED_FIELDS = ['username']  # Fields required during createsuperuser
 
     class Meta:
         verbose_name = "Utilisateur"
@@ -31,27 +29,27 @@ class User(AbstractUser):
 
 
 class UserConfiguration(models.Model):
-    """Configuration pour la numérotation des devis et factures"""
-    
-    # Lien avec l'utilisateur (OneToOne = 1 config par utilisateur)
+    """Configuration for quote and invoice numbering"""
+
+    # Link to user (OneToOne = 1 config per user)
     user = models.OneToOneField(
         User,
-        on_delete=models.CASCADE,  # Si on supprime l'user, on supprime sa config
+        on_delete=models.CASCADE,  # If user is deleted, delete their config
         related_name='configuration'
     )
-    
-    # Numérotation
+
+    # Numbering
     next_quote_number = models.IntegerField(default=1, verbose_name="Prochain numéro de devis")
     next_invoice_number = models.IntegerField(default=1, verbose_name="Prochain numéro de facture")
-    
-    # Préfixes
+
+    # Prefixes
     quote_prefix = models.CharField(max_length=10, default="DEV", verbose_name="Préfixe devis")
     invoice_prefix = models.CharField(max_length=10, default="FAC", verbose_name="Préfixe facture")
-    
-    # Délais par défaut
+
+    # Default deadlines
     payment_deadline_days = models.IntegerField(default=30, verbose_name="Délai de paiement (jours)")
     quote_validity_days = models.IntegerField(default=30, verbose_name="Validité du devis (jours)")
-    
+
     # Dates
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

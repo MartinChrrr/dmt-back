@@ -1,14 +1,14 @@
 from decimal import Decimal
 from django.conf import settings
 from django.db import models
-# Create your models here.
 
-class Prestation(models.Model):
+
+class Service(models.Model):
 
     UNITS = [
-        ("heure", "Heure"),
-        ("jour", "Jour"),
-        ("forfait", "Forfait"),
+        ("heure", "Hour"),
+        ("jour", "Day"),
+        ("forfait", "Flat rate"),
     ]
 
     VAT = [
@@ -17,7 +17,7 @@ class Prestation(models.Model):
         (Decimal("5.50"), "5.5%"),
         (Decimal("0.00"), "0%"),
     ]
-        
+
     utilisateur = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -34,8 +34,9 @@ class Prestation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Prestation"
-        verbose_name_plural = "Prestations"
+        db_table = 'services_prestation'
+        verbose_name = "Service"
+        verbose_name_plural = "Services"
 
     def __str__(self):
         return self.label

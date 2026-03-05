@@ -7,22 +7,22 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, DateFromToRangeFilter
 import weasyprint
-from .models import Facture, HistoriqueFacture
-from .serializers import FactureSerializer, FactureFromDevisSerializer
-from clients.models import Adresse
+from .models import Invoice, InvoiceHistory
+from .serializers import InvoiceSerializer, InvoiceFromQuoteSerializer
+from clients.models import Address
 from rest_framework.permissions import IsAuthenticated
 
 
 # -------------------------------------------------------------------------
-# Filtres
+# Filters
 # -------------------------------------------------------------------------
 
-class FactureFilter(FilterSet):
+class InvoiceFilter(FilterSet):
     date_emission = DateFromToRangeFilter()
     date_echeance = DateFromToRangeFilter()
 
     class Meta:
-        model = Facture
+        model = Invoice
         fields = {
             'client': ['exact'],
             'statut': ['exact'],
@@ -34,9 +34,9 @@ class FactureFilter(FilterSet):
 # ViewSet
 # -------------------------------------------------------------------------
 
-class FactureViewSet(viewsets.ModelViewSet):
+class InvoiceViewSet(viewsets.ModelViewSet):
     """
-    CRUD sur les factures avec lignes imbriquées.
+    CRUD for invoices with nested lines.
 
     list:            GET    /invoices/
     create:          POST   /invoices/
@@ -48,17 +48,17 @@ class FactureViewSet(viewsets.ModelViewSet):
     from_devis:      POST   /invoices/from-devis/
     """
 
-    serializer_class = FactureSerializer
-    permission_classes = [IsAuthenticated] 
+    serializer_class = InvoiceSerializer
+    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_class = FactureFilter
+    filterset_class = InvoiceFilter
     search_fields = ['numero', 'objet']
     ordering_fields = ['date_emission', 'date_echeance', 'created_at', 'total_ttc']
     ordering = ['-date_emission', '-created_at']
 
     def get_queryset(self):
         return (
-            Facture.objects
+            Invoice.objects
             .filter(utilisateur=self.request.user)
             .prefetch_related('lignes', 'historique')
         )
@@ -67,9 +67,9 @@ class FactureViewSet(viewsets.ModelViewSet):
         serializer.save(utilisateur=self.request.user)
 
     def perform_destroy(self, instance):
-        """Soft delete — uniquement si BROUILLON"""
-        if not instance.est_supprimable:
-            raise PermissionError("Seule une facture en brouillon peut être supprimée.")
+        """Soft delete — only if DRAFT"""
+        if not instance.is_deletable:
+            raise PermissionError("Only a draft invoice can be deleted.")
         instance.delete()
 
     def destroy(self, request, *args, **kwargs):
@@ -82,133 +82,133 @@ class FactureViewSet(viewsets.ModelViewSet):
             )
 
     # -------------------------------------------------------------------------
-    # Action : changement de statut
+    # Action: status change
     # -------------------------------------------------------------------------
 
     TRANSITIONS = {
-        Facture.STATUT_BROUILLON: [Facture.STATUT_ENVOYEE],
-        Facture.STATUT_ENVOYEE: [Facture.STATUT_PAYEE, Facture.STATUT_EN_RETARD],
-        Facture.STATUT_EN_RETARD: [Facture.STATUT_PAYEE],
-        Facture.STATUT_PAYEE: [],
+        Invoice.STATUT_BROUILLON: [Invoice.STATUT_ENVOYEE],
+        Invoice.STATUT_ENVOYEE: [Invoice.STATUT_PAYEE, Invoice.STATUT_EN_RETARD],
+        Invoice.STATUT_EN_RETARD: [Invoice.STATUT_PAYEE],
+        Invoice.STATUT_PAYEE: [],
     }
 
     @action(detail=True, methods=['post'])
     def changer_statut(self, request, pk=None):
         """
         POST /invoices/{id}/changer_statut/
-        Body : { "statut": "ENVOYEE" }
+        Body: { "statut": "ENVOYEE" }
         """
-        facture = self.get_object()
-        nouveau_statut = request.data.get('statut')
+        invoice = self.get_object()
+        new_status = request.data.get('statut')
 
-        if not nouveau_statut:
+        if not new_status:
             return Response(
-                {'statut': "Ce champ est requis."},
+                {'statut': "This field is required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        transitions_possibles = self.TRANSITIONS.get(facture.statut, [])
-        if nouveau_statut not in transitions_possibles:
+        allowed_transitions = self.TRANSITIONS.get(invoice.statut, [])
+        if new_status not in allowed_transitions:
             return Response(
                 {
                     'statut': (
-                        f"Transition de « {facture.statut} » vers « {nouveau_statut} » "
-                        f"non autorisée. Transitions possibles : {transitions_possibles}"
+                        f"Transition from '{invoice.statut}' to '{new_status}' "
+                        f"is not allowed. Allowed transitions: {allowed_transitions}"
                     )
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         with transaction.atomic():
-            ancien_statut = facture.statut
-            facture.statut = nouveau_statut
+            old_status = invoice.statut
+            invoice.statut = new_status
 
-            # Génération du numéro lors du passage à ENVOYEE
-            if nouveau_statut == Facture.STATUT_ENVOYEE and not facture.numero:
-                facture.numero = self._generer_numero(facture.utilisateur)
+            # Generate number when transitioning to SENT
+            if new_status == Invoice.STATUT_ENVOYEE and not invoice.numero:
+                invoice.numero = self._generate_number(invoice.utilisateur)
 
-            facture.save(update_fields=['statut', 'numero'])
+            invoice.save(update_fields=['statut', 'numero'])
 
-            HistoriqueFacture.objects.create(
-                facture=facture,
-                ancien_statut=ancien_statut,
-                nouveau_statut=nouveau_statut,
+            InvoiceHistory.objects.create(
+                facture=invoice,
+                ancien_statut=old_status,
+                nouveau_statut=new_status,
             )
 
-        serializer = self.get_serializer(facture)
+        serializer = self.get_serializer(invoice)
         return Response(serializer.data)
 
     @staticmethod
-    def _generer_numero(utilisateur):
+    def _generate_number(user):
         """
-        Génère le numéro de facture à partir de la UserConfiguration.
-        Format : PREFIXE-ANNEE-NUMERO (ex: FAC-2025-001)
+        Generate invoice number from UserConfiguration.
+        Format: PREFIX-YEAR-NUMBER (e.g. FAC-2025-001)
         """
         from accounts.models import UserConfiguration
 
-        config = UserConfiguration.objects.select_for_update().get(user=utilisateur)
-        annee = timezone.now().year
-        numero = f"{config.invoice_prefix}-{annee}-{config.next_invoice_number:03d}"
+        config = UserConfiguration.objects.select_for_update().get(user=user)
+        year = timezone.now().year
+        number = f"{config.invoice_prefix}-{year}-{config.next_invoice_number:03d}"
         config.next_invoice_number += 1
         config.save(update_fields=['next_invoice_number'])
-        return numero
+        return number
 
     # -------------------------------------------------------------------------
-    # Action : créer une facture depuis un devis
+    # Action: create invoice from quote
     # -------------------------------------------------------------------------
 
     @action(detail=False, methods=['post'], url_path='from-devis')
     def from_devis(self, request):
         """
         POST /invoices/from-devis/
-        Body : { "devis_id": 1 }
+        Body: { "devis_id": 1 }
         """
-        serializer = FactureFromDevisSerializer(
+        serializer = InvoiceFromQuoteSerializer(
             data=request.data,
             context={'request': request},
         )
         serializer.is_valid(raise_exception=True)
-        facture = serializer.save()
+        invoice = serializer.save()
 
         return Response(
-            FactureSerializer(facture).data,
+            InvoiceSerializer(invoice).data,
             status=status.HTTP_201_CREATED,
         )
 
     # -------------------------------------------------------------------------
-    # Action : générer le PDF
+    # Action: generate PDF
     # -------------------------------------------------------------------------
 
     @action(detail=True, methods=['get'], url_path='pdf')
-    def generer_pdf(self, request, pk=None):
+    def generate_pdf(self, request, pk=None):
         """
         GET /invoices/{id}/pdf/
-        Génère et retourne le PDF de la facture.
+        Generate and return the invoice PDF.
         """
-        facture = self.get_object()
-        lignes = facture.lignes.all()
+        invoice = self.get_object()
+        lines = invoice.lignes.all()
 
-        # Adresse de facturation du client (fallback sur siège)
-        adresse = (
-            Adresse.objects
-            .filter(client=facture.client, type=Adresse.TypeAdresse.FACTURATION)
+        # Client billing address (fallback to headquarters)
+        address = (
+            Address.objects
+            .filter(client=invoice.client, type=Address.AddressType.FACTURATION)
             .first()
         ) or (
-            Adresse.objects
-            .filter(client=facture.client, type=Adresse.TypeAdresse.SIEGE)
+            Address.objects
+            .filter(client=invoice.client, type=Address.AddressType.SIEGE)
             .first()
         )
 
         html = render_to_string('invoices/facture_pdf.html', {
-            'facture': facture,
-            'lignes': lignes,
-            'adresse': adresse,
-            'utilisateur': facture.utilisateur,
+            'facture': invoice,
+            'lignes': lines,
+            'adresse': address,
+            'utilisateur': invoice.utilisateur,
         })
 
         pdf = weasyprint.HTML(string=html).write_pdf()
 
-        filename = f"{facture.numero or f'brouillon-{facture.pk}'}.pdf"
+        filename = f"{invoice.numero or f'draft-{invoice.pk}'}.pdf"
         response = HttpResponse(pdf, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response

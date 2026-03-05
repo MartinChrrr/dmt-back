@@ -53,38 +53,38 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError(
-                {"password": "Les mots de passe ne correspondent pas."}
+                {"password": "Passwords do not match."}
             )
         return attrs
 
     def create(self, validated_data):
         validated_data.pop('password_confirm')
         user = User.objects.create_user(**validated_data)
-        # Créer la configuration automatiquement
+        # Automatically create the configuration
         UserConfiguration.objects.create(user=user)
         return user
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """JWT Token avec infos utilisateur"""
-    
+    """JWT Token with user info"""
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        
-        # Ajoute des claims personnalisés au token
+
+        # Add custom claims to the token
         token['email'] = user.email
         token['username'] = user.username
         token['company_name'] = user.company_name
-        
+
         return token
 
     def validate(self, attrs):
         data = super().validate(attrs)
-        
-        # Ajoute les infos utilisateur dans la réponse
+
+        # Add user info to the response
         data['user'] = UserSerializer(self.user).data
-        
+
         return data
 
 
@@ -99,6 +99,6 @@ class ChangePasswordSerializer(serializers.Serializer):
     def validate(self, attrs):
         if attrs['new_password'] != attrs['new_password_confirm']:
             raise serializers.ValidationError(
-                {"new_password": "Les mots de passe ne correspondent pas."}
+                {"new_password": "Passwords do not match."}
             )
         return attrs

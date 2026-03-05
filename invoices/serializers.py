@@ -2,16 +2,16 @@ from rest_framework import serializers
 from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
-from .models import Facture, LigneFacture, HistoriqueFacture
+from .models import Invoice, InvoiceLine, InvoiceHistory
 from clients.models import Client
 from clients.serializers import ClientSerializer
 
 
-class LigneFactureSerializer(serializers.ModelSerializer):
+class InvoiceLineSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
 
     class Meta:
-        model = LigneFacture
+        model = InvoiceLine
         fields = [
             'id',
             'ordre',
@@ -26,29 +26,29 @@ class LigneFactureSerializer(serializers.ModelSerializer):
         read_only_fields = ['montant_ht']
 
 
-class HistoriqueFactureSerializer(serializers.ModelSerializer):
+class InvoiceHistorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = HistoriqueFacture
+        model = InvoiceHistory
         fields = ['id', 'ancien_statut', 'nouveau_statut', 'created_at']
         read_only_fields = fields
 
 
-class FactureSerializer(serializers.ModelSerializer):
+class InvoiceSerializer(serializers.ModelSerializer):
     client = ClientSerializer(read_only=True)
     client_id = serializers.PrimaryKeyRelatedField(
         queryset=Client.objects.all(),
         source='client',
         write_only=True,
     )
-    lignes = LigneFactureSerializer(many=True)
-    historique = HistoriqueFactureSerializer(many=True, read_only=True)
+    lignes = InvoiceLineSerializer(many=True)
+    historique = InvoiceHistorySerializer(many=True, read_only=True)
     date_echeance = serializers.DateField(required=False, allow_null=True)
     total_ht = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     total_tva = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     total_ttc = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
-        model = Facture
+        model = Invoice
         fields = [
             'id',
             'utilisateur',
@@ -72,96 +72,97 @@ class FactureSerializer(serializers.ModelSerializer):
         read_only_fields = ['utilisateur', 'numero', 'statut', 'created_at', 'updated_at']
 
     # -------------------------------------------------------------------------
-    # Création
+    # Creation
     # -------------------------------------------------------------------------
     def create(self, validated_data):
-        lignes_data = validated_data.pop('lignes', [])
-        utilisateur = validated_data['utilisateur']
+        lines_data = validated_data.pop('lignes', [])
+        user = validated_data['utilisateur']
 
         with transaction.atomic():
-            # Auto-calcul de date_echeance si non fournie
+            # Auto-calculate due date if not provided
             if not validated_data.get('date_echeance'):
                 from accounts.models import UserConfiguration
-                config = UserConfiguration.objects.get(user=utilisateur)
+                config = UserConfiguration.objects.get(user=user)
                 date_emission = validated_data.get('date_emission', timezone.now().date())
-                validated_data['date_echeance'] = date_emission + timedelta(days=config.payment_deadline_days)
+                
+                ['date_echeance'] = date_emission + timedelta(days=config.payment_deadline_days)
 
-            facture = Facture.objects.create(**validated_data)
+            invoice = Invoice.objects.create(**validated_data)
 
-            for ligne_data in lignes_data:
-                ligne_data.pop('id', None)
-                ligne = LigneFacture(facture=facture, **ligne_data)
-                ligne.save(recalculer_totaux=False)
+            for line_data in lines_data:
+                line_data.pop('id', None)
+                line = InvoiceLine(facture=invoice, **line_data)
+                line.save(recalculate_totals=False)
 
-            facture.calculer_totaux()
+            invoice.calculate_totals()
 
-            HistoriqueFacture.objects.create(
-                facture=facture,
+            InvoiceHistory.objects.create(
+                facture=invoice,
                 ancien_statut=None,
-                nouveau_statut=facture.statut,
+                nouveau_statut=invoice.statut,
             )
 
-        return facture
+        return invoice
 
     # -------------------------------------------------------------------------
-    # Mise à jour (uniquement si BROUILLON)
+    # Update (only if DRAFT)
     # -------------------------------------------------------------------------
     def update(self, instance, validated_data):
-        if not instance.est_modifiable:
+        if not instance.is_editable:
             raise serializers.ValidationError(
-                "Seule une facture en brouillon peut être modifiée."
+                "Only a draft invoice can be modified."
             )
 
-        # Le client ne peut pas être changé après création
+        # Client cannot be changed after creation
         validated_data.pop('client', None)
 
-        lignes_data = validated_data.pop('lignes', [])
+        lines_data = validated_data.pop('lignes', [])
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        self._sync_lignes(instance, lignes_data)
-        instance.calculer_totaux()
+        self._sync_lines(instance, lines_data)
+        instance.calculate_totals()
         return instance
 
-    def _sync_lignes(self, facture, lignes_data):
+    def _sync_lines(self, invoice, lines_data):
         """
-        Synchronise les lignes de la facture :
-        - Lignes avec id existant → mise à jour
-        - Lignes sans id → création
-        - Lignes existantes absentes du payload → suppression (hard delete)
+        Synchronize invoice lines:
+        - Lines with existing id → update
+        - Lines without id → create
+        - Existing lines absent from payload → delete (hard delete)
         """
-        lignes_existantes = {
-            ligne.id: ligne
-            for ligne in facture.lignes.all()
+        existing_lines = {
+            line.id: line
+            for line in invoice.lignes.all()
         }
-        ids_recus = set()
+        received_ids = set()
 
-        for ligne_data in lignes_data:
-            ligne_id = ligne_data.pop('id', None)
+        for line_data in lines_data:
+            line_id = line_data.pop('id', None)
 
-            if ligne_id and ligne_id in lignes_existantes:
-                ligne = lignes_existantes[ligne_id]
-                for attr, value in ligne_data.items():
-                    setattr(ligne, attr, value)
-                ligne.save(recalculer_totaux=False)
-                ids_recus.add(ligne_id)
+            if line_id and line_id in existing_lines:
+                line = existing_lines[line_id]
+                for attr, value in line_data.items():
+                    setattr(line, attr, value)
+                line.save(recalculate_totals=False)
+                received_ids.add(line_id)
             else:
-                ligne = LigneFacture(facture=facture, **ligne_data)
-                ligne.save(recalculer_totaux=False)
+                line = InvoiceLine(facture=invoice, **line_data)
+                line.save(recalculate_totals=False)
 
-        # Hard delete des lignes absentes
-        ids_a_supprimer = set(lignes_existantes.keys()) - ids_recus
-        if ids_a_supprimer:
-            facture.lignes.filter(id__in=ids_a_supprimer).delete()
+        # Hard delete absent lines
+        ids_to_delete = set(existing_lines.keys()) - received_ids
+        if ids_to_delete:
+            invoice.lignes.filter(id__in=ids_to_delete).delete()
 
     # -------------------------------------------------------------------------
     # Validation
     # -------------------------------------------------------------------------
     def validate_lignes(self, value):
         if not value:
-            raise serializers.ValidationError("La facture doit contenir au moins une ligne.")
+            raise serializers.ValidationError("The invoice must contain at least one line.")
         return value
 
     def validate(self, data):
@@ -170,103 +171,103 @@ class FactureSerializer(serializers.ModelSerializer):
 
         if date_emission and date_echeance and date_echeance < date_emission:
             raise serializers.ValidationError({
-                'date_echeance': "La date d'échéance ne peut pas être antérieure à la date d'émission."
+                'date_echeance': "The due date cannot be earlier than the issue date."
             })
 
         return data
 
 
 # -------------------------------------------------------------------------
-# Serializer de création depuis un devis accepté
+# Serializer for creating an invoice from an accepted quote
 # -------------------------------------------------------------------------
 
-class FactureFromDevisSerializer(serializers.Serializer):
-    """Crée une facture à partir d'un devis accepté"""
+class InvoiceFromQuoteSerializer(serializers.Serializer):
+    """Create an invoice from an accepted quote"""
     devis_id = serializers.IntegerField()
 
     def validate_devis_id(self, value):
-        from quotes.models import Devis
+        from quotes.models import Quote
         try:
-            devis = Devis.objects.get(id=value)
-        except Devis.DoesNotExist:
-            raise serializers.ValidationError("Devis introuvable.")
+            quote = Quote.objects.get(id=value)
+        except Quote.DoesNotExist:
+            raise serializers.ValidationError("Quote not found.")
 
-        if devis.statut not in (Devis.STATUT_ENVOYE, Devis.STATUT_ACCEPTE):
+        if quote.statut not in (Quote.STATUT_ENVOYE, Quote.STATUT_ACCEPTE):
             raise serializers.ValidationError(
-                "Seul un devis envoyé ou accepté peut être transformé en facture."
+                "Only a sent or accepted quote can be converted to an invoice."
             )
 
-        if hasattr(devis, 'facture') and devis.facture and devis.facture.deleted_at is None:
-            raise serializers.ValidationError("Ce devis a déjà été transformé en facture.")
+        if hasattr(quote, 'facture') and quote.facture and quote.facture.deleted_at is None:
+            raise serializers.ValidationError("This quote has already been converted to an invoice.")
 
-        self.devis = devis
+        self.quote = quote
         return value
 
     def create(self, validated_data):
-        from quotes.models import HistoriqueDevis
+        from quotes.models import QuoteHistory
 
-        devis = self.devis
-        utilisateur = self.context['request'].user
+        quote = self.quote
+        user = self.context['request'].user
 
         with transaction.atomic():
-            # Passer le devis en ACCEPTE s'il ne l'est pas déjà
-            if devis.statut != devis.STATUT_ACCEPTE:
-                ancien_statut = devis.statut
-                devis.statut = devis.STATUT_ACCEPTE
-                devis.save(update_fields=['statut'])
-                HistoriqueDevis.objects.create(
-                    devis=devis,
-                    ancien_statut=ancien_statut,
-                    nouveau_statut=devis.STATUT_ACCEPTE,
+            # Set quote to ACCEPTED if not already
+            if quote.statut != quote.STATUT_ACCEPTE:
+                old_status = quote.statut
+                quote.statut = quote.STATUT_ACCEPTE
+                quote.save(update_fields=['statut'])
+                QuoteHistory.objects.create(
+                    devis=quote,
+                    ancien_statut=old_status,
+                    nouveau_statut=quote.STATUT_ACCEPTE,
                 )
 
             from accounts.models import UserConfiguration
-            config = UserConfiguration.objects.get(user=utilisateur)
+            config = UserConfiguration.objects.get(user=user)
 
             date_emission = timezone.now().date()
             date_echeance = date_emission + timedelta(days=config.payment_deadline_days)
 
-            facture = Facture.objects.create(
-                utilisateur=utilisateur,
-                client=devis.client,
-                devis_origine=devis,
+            invoice = Invoice.objects.create(
+                utilisateur=user,
+                client=quote.client,
+                devis_origine=quote,
                 date_emission=date_emission,
                 date_echeance=date_echeance,
-                objet=devis.objet,
-                notes=devis.notes,
+                objet=quote.objet,
+                notes=quote.notes,
             )
 
-            # Copier les lignes du devis
-            for ligne_devis in devis.lignes.filter(deleted_at__isnull=True):
-                LigneFacture(
-                    facture=facture,
-                    ordre=ligne_devis.ordre,
-                    libelle=ligne_devis.libelle,
-                    description=ligne_devis.description,
-                    quantite=ligne_devis.quantite,
-                    unite=ligne_devis.unite,
-                    prix_unitaire_ht=ligne_devis.prix_unitaire_ht,
-                    taux_tva=ligne_devis.taux_tva,
-                ).save(recalculer_totaux=False)
+            # Copy lines from the quote
+            for quote_line in quote.lignes.filter(deleted_at__isnull=True):
+                InvoiceLine(
+                    facture=invoice,
+                    ordre=quote_line.ordre,
+                    libelle=quote_line.libelle,
+                    description=quote_line.description,
+                    quantite=quote_line.quantite,
+                    unite=quote_line.unite,
+                    prix_unitaire_ht=quote_line.prix_unitaire_ht,
+                    taux_tva=quote_line.taux_tva,
+                ).save(recalculate_totals=False)
 
-            facture.calculer_totaux()
+            invoice.calculate_totals()
 
-            HistoriqueFacture.objects.create(
-                facture=facture,
+            InvoiceHistory.objects.create(
+                facture=invoice,
                 ancien_statut=None,
-                nouveau_statut=Facture.STATUT_BROUILLON,
+                nouveau_statut=Invoice.STATUT_BROUILLON,
             )
 
-            # Passer la facture en ENVOYEE avec génération du numéro
-            from invoices.views import FactureViewSet
-            facture.numero = FactureViewSet._generer_numero(utilisateur)
-            facture.statut = Facture.STATUT_ENVOYEE
-            facture.save(update_fields=['statut', 'numero'])
+            # Set invoice to SENT with number generation
+            from invoices.views import InvoiceViewSet
+            invoice.numero = InvoiceViewSet._generate_number(user)
+            invoice.statut = Invoice.STATUT_ENVOYEE
+            invoice.save(update_fields=['statut', 'numero'])
 
-            HistoriqueFacture.objects.create(
-                facture=facture,
-                ancien_statut=Facture.STATUT_BROUILLON,
-                nouveau_statut=Facture.STATUT_ENVOYEE,
+            InvoiceHistory.objects.create(
+                facture=invoice,
+                ancien_statut=Invoice.STATUT_BROUILLON,
+                nouveau_statut=Invoice.STATUT_ENVOYEE,
             )
 
-        return facture
+        return invoice

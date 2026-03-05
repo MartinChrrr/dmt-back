@@ -1,7 +1,3 @@
-from django.shortcuts import render
-
-# Create your views here.
-
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -9,134 +5,134 @@ from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 
-from .models import Devis, LigneDevis, HistoriqueDevis
-from .serializers import DevisSerializer, LigneDevisSerializer, HistoriqueDevisSerializer
+from .models import Quote, QuoteLine, QuoteHistory
+from .serializers import QuoteSerializer, QuoteLineSerializer, QuoteHistorySerializer
 
 
-class DevisViewSet(viewsets.ModelViewSet):
-    queryset = Devis.objects.all()
-    serializer_class = DevisSerializer
+class QuoteViewSet(viewsets.ModelViewSet):
+    queryset = Quote.objects.all()
+    serializer_class = QuoteSerializer
     permission_classes = [IsAuthenticated]
     """
-    API pour gérer les devis
-    
-    Endpoints disponibles:
-    - GET    /api/devis/                     -> Liste tous les devis
-    - POST   /api/devis/                     -> Créer un devis
-    - GET    /api/devis/{id}/                -> Détail d'un devis
-    - PUT    /api/devis/{id}/                -> Modifier un devis (complet)
-    - PATCH  /api/devis/{id}/                -> Modifier un devis (partiel)
-    - DELETE /api/devis/{id}/                -> Supprimer un devis (soft delete)
-    - POST   /api/devis/{id}/changer_statut/ -> Changer le statut
+    API for managing quotes
+
+    Available endpoints:
+    - GET    /api/devis/                     -> List all quotes
+    - POST   /api/devis/                     -> Create a quote
+    - GET    /api/devis/{id}/                -> Quote detail
+    - PUT    /api/devis/{id}/                -> Update a quote (full)
+    - PATCH  /api/devis/{id}/                -> Update a quote (partial)
+    - DELETE /api/devis/{id}/                -> Delete a quote (soft delete)
+    - POST   /api/devis/{id}/changer_statut/ -> Change status
     """
 
-    
-    # Configuration des filtres et recherche
+
+    # Filter and search configuration
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['statut', 'client_id', 'utilisateur']
     search_fields = ['numero', 'objet']
     ordering_fields = ['date_emission', 'total_ttc', 'created_at']
     ordering = ['-date_emission']
-    
+
     def get_queryset(self):
-        return Devis.objects.filter(utilisateur=self.request.user)
-    
+        return Quote.objects.filter(utilisateur=self.request.user)
+
     def perform_create(self, serializer):
         serializer.save(utilisateur=self.request.user)
-    
+
     def update(self, request, *args, **kwargs):
-        devis = self.get_object()
-        if not devis.est_modifiable:
+        quote = self.get_object()
+        if not quote.is_editable:
             return Response(
-                {'error': 'Impossible de modifier un devis qui n\'est pas en brouillon.'},
+                {'error': 'Cannot modify a quote that is not in draft status.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         return super().update(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
-        devis = self.get_object()
-        if not devis.est_modifiable:
+        quote = self.get_object()
+        if not quote.is_editable:
             return Response(
-                {'error': 'Impossible de modifier un devis qui n\'est pas en brouillon.'},
+                {'error': 'Cannot modify a quote that is not in draft status.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         return super().partial_update(request, *args, **kwargs)
 
     def destroy(self, request, pk=None):
-        devis = self.get_object()
-        if not devis.est_supprimable:
+        quote = self.get_object()
+        if not quote.is_deletable:
             return Response(
-                {'error': 'Impossible de supprimer un devis qui n\'est pas en brouillon.'},
+                {'error': 'Cannot delete a quote that is not in draft status.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        devis.delete()
+        quote.delete()
         return Response(
-            {'message': 'Devis supprimé avec succès'},
+            {'message': 'Quote deleted successfully'},
             status=status.HTTP_204_NO_CONTENT
         )
-    
+
     @action(detail=True, methods=['post'])
     def changer_statut(self, request, pk=None):
-    # Change le statut d'un devis et crée une entrée dans l'historique
-        
-    # URL: POST /api/devis/{id}/changer_statut/
-    # Body: {"statut": "ENVOYE"}
+        # Change quote status and create a history entry
 
-        devis = self.get_object()
-        nouveau_statut = request.data.get('statut')
-        
-        # Vérifier que le statut est valide
-        statuts_valides = [choix[0] for choix in Devis.STATUT_CHOICES]
-        if nouveau_statut not in statuts_valides:
+        # URL: POST /api/devis/{id}/changer_statut/
+        # Body: {"statut": "ENVOYE"}
+
+        quote = self.get_object()
+        new_status = request.data.get('statut')
+
+        # Check that the status is valid
+        valid_statuses = [choice[0] for choice in Quote.STATUT_CHOICES]
+        if new_status not in valid_statuses:
             return Response(
-                {'error': 'Statut invalide'},
+                {'error': 'Invalid status'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        # Sauvegarder l'ancien statut
-        ancien_statut = devis.statut
-        
-        # Changer le statut
-        devis.statut = nouveau_statut
-        devis.save()
-        
-        # Créer une entrée dans l'historique
-        HistoriqueDevis.objects.create(
-            devis=devis,
-            ancien_statut=ancien_statut,
-            nouveau_statut=nouveau_statut
+
+        # Save the old status
+        old_status = quote.statut
+
+        # Change the status
+        quote.statut = new_status
+        quote.save()
+
+        # Create a history entry
+        QuoteHistory.objects.create(
+            devis=quote,
+            ancien_statut=old_status,
+            nouveau_statut=new_status
         )
-        
-        serializer = self.get_serializer(devis)
+
+        serializer = self.get_serializer(quote)
         return Response(
             {
-                'message': 'Statut modifié avec succès',
+                'message': 'Status changed successfully',
                 'data': serializer.data
             },
             status=status.HTTP_200_OK
         )
 
 
-class LigneDevisViewSet(viewsets.ModelViewSet):
-    serializer_class = LigneDevisSerializer
+class QuoteLineViewSet(viewsets.ModelViewSet):
+    serializer_class = QuoteLineSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
-        return LigneDevis.objects.filter(devis__utilisateur=self.request.user)
-    
+        return QuoteLine.objects.filter(devis__utilisateur=self.request.user)
+
     def destroy(self, request, pk=None):
-        # Soft delete d'une ligne
-        ligne = self.get_object()
-        ligne.delete()
+        # Soft delete a line
+        line = self.get_object()
+        line.delete()
         return Response(
-            {'message': 'Ligne supprimée avec succès'},
+            {'message': 'Line deleted successfully'},
             status=status.HTTP_204_NO_CONTENT
         )
 
 
-class HistoriqueDevisViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = HistoriqueDevisSerializer
+class QuoteHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = QuoteHistorySerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
-        return HistoriqueDevis.objects.filter(devis__utilisateur=self.request.user).order_by('-created_at')
+        return QuoteHistory.objects.filter(devis__utilisateur=self.request.user).order_by('-created_at')

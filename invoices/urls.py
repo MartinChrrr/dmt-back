@@ -1,7 +1,7 @@
 from rest_framework.routers import DefaultRouter
-from .views import FactureViewSet
+from .views import InvoiceViewSet
 
 router = DefaultRouter()
-router.register('invoices', FactureViewSet, basename='facture')
+router.register('invoices', InvoiceViewSet, basename='facture')
 
 urlpatterns = router.urls

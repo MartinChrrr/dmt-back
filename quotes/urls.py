@@ -1,12 +1,12 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import DevisViewSet, LigneDevisViewSet, HistoriqueDevisViewSet
+from .views import QuoteViewSet, QuoteLineViewSet, QuoteHistoryViewSet
 
 router = DefaultRouter()
 
-router.register('quotes', DevisViewSet, basename='devis')
-# router.register(r'lignes-devis', LigneDevisViewSet, basename='ligne-devis')
-# router.register(r'historique-devis', HistoriqueDevisViewSet, basename='historique-devis')
+router.register('quotes', QuoteViewSet, basename='devis')
+# router.register(r'lignes-devis', QuoteLineViewSet, basename='ligne-devis')
+# router.register(r'historique-devis', QuoteHistoryViewSet, basename='historique-devis')
 
 urlpatterns = [
     path('', include(router.urls)),

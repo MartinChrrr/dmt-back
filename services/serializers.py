@@ -1,8 +1,8 @@
 from rest_framework import serializers
-from .models import Prestation
+from .models import Service
 
-class PrestationSerializer(serializers.ModelSerializer):
+class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Prestation
+        model = Service
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at', 'utilisateur']
