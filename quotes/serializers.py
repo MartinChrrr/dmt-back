@@ -1,6 +1,8 @@
+from datetime import timedelta
 from rest_framework import serializers
 from clients.serializers import ClientSerializer
 from clients.models import Client
+from accounts.models import UserConfiguration
 from .models import Devis, LigneDevis, HistoriqueDevis
 
 
@@ -90,7 +92,14 @@ class DevisSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Extract data rows
         lignes_data = validated_data.pop('lignes', [])
-        
+
+        # Auto-calculer date_validite si non fournie
+        if not validated_data.get('date_validite'):
+            user = validated_data['utilisateur']
+            config, _ = UserConfiguration.objects.get_or_create(user=user)
+            date_emission = validated_data.get('date_emission') or Devis._meta.get_field('date_emission').default()
+            validated_data['date_validite'] = date_emission + timedelta(days=config.quote_validity_days)
+
         # Create the quotation
         devis = Devis.objects.create(**validated_data)
         
@@ -114,6 +123,9 @@ class DevisSerializer(serializers.ModelSerializer):
         return devis
     
     def update(self, instance, validated_data):
+        # Le client ne peut pas être changé après création
+        validated_data.pop('client', None)
+
         # Extract data lines
         lignes_data = validated_data.pop('lignes', None)
         

@@ -112,6 +112,9 @@ class FactureSerializer(serializers.ModelSerializer):
                 "Seule une facture en brouillon peut être modifiée."
             )
 
+        # Le client ne peut pas être changé après création
+        validated_data.pop('client', None)
+
         lignes_data = validated_data.pop('lignes', [])
 
         for attr, value in validated_data.items():

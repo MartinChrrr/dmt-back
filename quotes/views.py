@@ -44,9 +44,31 @@ class DevisViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(utilisateur=self.request.user)
     
-    def destroy(self, request, pk=None):
-    # Soft delete d'un devis
+    def update(self, request, *args, **kwargs):
         devis = self.get_object()
+        if not devis.est_modifiable:
+            return Response(
+                {'error': 'Impossible de modifier un devis qui n\'est pas en brouillon.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        devis = self.get_object()
+        if not devis.est_modifiable:
+            return Response(
+                {'error': 'Impossible de modifier un devis qui n\'est pas en brouillon.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, pk=None):
+        devis = self.get_object()
+        if not devis.est_supprimable:
+            return Response(
+                {'error': 'Impossible de supprimer un devis qui n\'est pas en brouillon.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         devis.delete()
         return Response(
             {'message': 'Devis supprimé avec succès'},

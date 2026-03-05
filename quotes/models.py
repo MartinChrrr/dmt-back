@@ -60,7 +60,7 @@ class Devis(SoftDeleteModel):
     )
     numero = models.CharField(max_length=50, unique=True, blank=True, verbose_name='Numéro')
     date_emission = models.DateField(default=timezone.now, verbose_name='Date d\'émission')
-    date_validite = models.DateField(verbose_name='Date de validité')
+    date_validite = models.DateField(null=True, blank=True, verbose_name='Date de validité')
     statut = models.CharField(
         max_length=20,
         choices=STATUT_CHOICES,
@@ -84,36 +84,32 @@ class Devis(SoftDeleteModel):
     
     def __str__(self):
         return f"{self.numero}"
-    
+
+    @property
+    def est_modifiable(self):
+        return self.statut == self.STATUT_BROUILLON
+
+    @property
+    def est_supprimable(self):
+        return self.statut == self.STATUT_BROUILLON
+
     def save(self, *args, **kwargs):
         # Génère automatiquement le numéro si vide
         if not self.numero:
-            self.numero = self.generer_numero()
+            self.numero = self._generer_numero()
         super().save(*args, **kwargs)
 
-    @staticmethod
-    def generer_numero():
-        # Génère un numéro unique au format DEV-YYYY-XXX
+    def _generer_numero(self):
         from datetime import datetime
+        from accounts.models import UserConfiguration
+
+        config, _ = UserConfiguration.objects.get_or_create(user=self.utilisateur)
+        prefix = config.quote_prefix
         annee = datetime.now().year
-        prefix = f"DEV-{annee}-"
-        
-        # Chercher le dernier numéro de l'année
-        dernier = Devis.all_objects.filter(
-            numero__startswith=prefix
-        ).order_by('-numero').first()
-        
-        if dernier:
-            try:
-                # Extraire le numéro et l'incrémenter
-                dernier_num = int(dernier.numero.split('-')[-1])
-                nouveau_num = dernier_num + 1
-            except (ValueError, IndexError):
-                nouveau_num = 1
-        else:
-            nouveau_num = 1
-        
-        return f"{prefix}{nouveau_num:03d}"
+        numero = f"{prefix}-{annee}-{config.next_quote_number:03d}"
+        config.next_quote_number += 1
+        config.save()
+        return numero
 
     
     def calculer_totaux(self):
@@ -126,14 +122,13 @@ class Devis(SoftDeleteModel):
         self.save()
     
     def delete(self, *args, **kwargs):
+        if not self.est_supprimable:
+            raise ValueError("Impossible de supprimer un devis qui n'est pas en brouillon.")
         # Soft delete en cascade
-        # Supprimer les lignes
         for ligne in self.lignes.all():
             ligne.delete()
-        # Supprimer l'historique
         for historique in self.historique.all():
             historique.delete()
-        # Supprimer le devis
         super().delete(*args, **kwargs)
 
 
