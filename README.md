@@ -98,7 +98,6 @@ Password (again): *********
 Superuser created successfully.
 ```
 
-
 ## Configuration
 
 **Base de données**

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 10pt;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .page {
+            padding: 40px;
+        }
+
+        .emetteur-block h3 {
+            font-size: 8pt;
+            text-transform: uppercase;
+            color: #999;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+        }
+
+        .emetteur-block .nom {
+            font-size: 11pt;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .emetteur-block p {
+            font-size: 9pt;
+            color: #555;
+        }
+
+        /* Bloc émetteur pleine largeur */
+        .emetteur-block {
+            margin-bottom: 24px;
+        }
+
+        /* Ligne facture + client : table layout pour compatibilité PDF */
+        .facture-client-row {
+            width: 100%;
+            margin-bottom: 24px;
+        }
+
+        .facture-client-row td {
+            width: 50%;
+            vertical-align: top;
+            padding: 0;
+        }
+
+        .facture-client-row td:first-child {
+            padding-right: 20px;
+        }
+
+        .facture-client-row td:last-child {
+            padding-left: 20px;
+        }
+
+        /* Blocs émetteur et client (même style) */
+        .info-block h3 {
+            font-size: 8pt;
+            text-transform: uppercase;
+            color: #999;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+        }
+
+        .info-block .nom {
+            font-size: 11pt;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .info-block p {
+            font-size: 9pt;
+            color: #555;
+        }
+
+        /* Infos facture */
+        .facture-info h2 {
+            font-size: 20pt;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .facture-info table td {
+            padding: 2px 0;
+            font-size: 9pt;
+        }
+
+        .facture-info table td:first-child {
+            color: #666;
+            padding-right: 12px;
+        }
+
+        /* Objet */
+        .objet {
+            margin-bottom: 24px;
+            font-size: 10pt;
+        }
+
+        .objet strong {
+            color: #2c3e50;
+        }
+
+        /* Tableau des lignes */
+        table.lignes {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+        }
+
+        table.lignes thead th {
+            background: #2c3e50;
+            color: white;
+            padding: 8px 10px;
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: left;
+        }
+
+        table.lignes thead th.num {
+            text-align: center;
+            width: 5%;
+        }
+
+        table.lignes thead th.prix,
+        table.lignes thead th.montant {
+            text-align: right;
+        }
+
+        table.lignes tbody td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 9pt;
+            vertical-align: top;
+        }
+
+        table.lignes tbody td.num {
+            text-align: center;
+        }
+
+        table.lignes tbody td.prix,
+        table.lignes tbody td.montant {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        table.lignes tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        .description {
+            font-size: 8pt;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* Totaux */
+        .totaux-wrapper {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 24px;
+        }
+
+        table.totaux {
+            width: 280px;
+            border-collapse: collapse;
+        }
+
+        table.totaux td {
+            padding: 6px 10px;
+            font-size: 10pt;
+        }
+
+        table.totaux td:first-child {
+            color: #666;
+        }
+
+        table.totaux td:last-child {
+            text-align: right;
+            font-weight: bold;
+        }
+
+        table.totaux tr.total-ttc {
+            background: #2c3e50;
+            color: white;
+        }
+
+        table.totaux tr.total-ttc td {
+            padding: 10px;
+            font-size: 12pt;
+            color: white;
+        }
+
+        /* Notes */
+        .notes {
+            border-top: 1px solid #eee;
+            padding-top: 16px;
+            font-size: 9pt;
+            color: #666;
+        }
+
+        .notes h4 {
+            font-size: 9pt;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        /* Footer */
+        .footer {
+            position: fixed;
+            bottom: 20px;
+            left: 40px;
+            right: 40px;
+            text-align: center;
+            font-size: 7pt;
+            color: #aaa;
+            border-top: 1px solid #eee;
+            padding-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <!-- Ligne 1 : Émetteur -->
+        <div class="emetteur-block">
+            <h3>Émetteur</h3>
+            <p class="nom">{{ utilisateur.company_name|default:utilisateur.get_full_name }}</p>
+            {% if utilisateur.siret %}<p>SIRET : {{ utilisateur.siret }}</p>{% endif %}
+            {% if utilisateur.address %}<p>{{ utilisateur.address }}</p>{% endif %}
+            {% if utilisateur.postal_code or utilisateur.city %}
+                <p>{{ utilisateur.postal_code }} {{ utilisateur.city }}</p>
+            {% endif %}
+            {% if utilisateur.phone %}<p>Tél : {{ utilisateur.phone }}</p>{% endif %}
+            <p>{{ utilisateur.email }}</p>
+        </div>
+
+        <!-- Ligne 2 : Facture (gauche) + Client (droite) -->
+        <table class="facture-client-row">
+            <tr>
+                <td>
+                    <div class="facture-info">
+                        <h2>FACTURE</h2>
+                        <table>
+                            <tr>
+                                <td>Numéro</td>
+                                <td><strong>{{ facture.numero|default:"BROUILLON" }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Date d'émission</td>
+                                <td>{{ facture.date_emission|date:"d/m/Y" }}</td>
+                            </tr>
+                            <tr>
+                                <td>Date d'échéance</td>
+                                <td>{{ facture.date_echeance|date:"d/m/Y" }}</td>
+                            </tr>
+                            <tr>
+                                <td>Statut</td>
+                                <td>{{ facture.get_statut_display }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </td>
+                <td>
+                    <div class="info-block">
+                        <p class="nom">{{ facture.client.raison_sociale }}</p>
+                        {% if facture.client.siret %}<p>SIRET : {{ facture.client.siret }}</p>{% endif %}
+                        {% if adresse %}
+                            <p>{{ adresse.ligne1 }}</p>
+                            {% if adresse.ligne2 %}<p>{{ adresse.ligne2 }}</p>{% endif %}
+                            <p>{{ adresse.code_postal }} {{ adresse.ville }}</p>
+                            {% if adresse.pays != "France" %}<p>{{ adresse.pays }}</p>{% endif %}
+                        {% endif %}
+                        {% if facture.client.email %}<p>{{ facture.client.email }}</p>{% endif %}
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Objet -->
+        {% if facture.objet %}
+        <div class="objet">
+            <strong>Objet :</strong> {{ facture.objet }}
+        </div>
+        {% endif %}
+
+        <!-- Tableau des lignes -->
+        <table class="lignes">
+            <thead>
+                <tr>
+                    <th class="num">#</th>
+                    <th>Désignation</th>
+                    <th class="prix">Qté</th>
+                    <th>Unité</th>
+                    <th class="prix">P.U. HT</th>
+                    <th class="prix">TVA</th>
+                    <th class="montant">Montant HT</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ligne in lignes %}
+                <tr>
+                    <td class="num">{{ ligne.ordre }}</td>
+                    <td>
+                        {{ ligne.libelle }}
+                        {% if ligne.description %}<div class="description">{{ ligne.description }}</div>{% endif %}
+                    </td>
+                    <td class="prix">{{ ligne.quantite }}</td>
+                    <td>{{ ligne.unite }}</td>
+                    <td class="prix">{{ ligne.prix_unitaire_ht }} €</td>
+                    <td class="prix">{{ ligne.taux_tva }} %</td>
+                    <td class="montant">{{ ligne.montant_ht }} €</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Totaux -->
+        <div class="totaux-wrapper">
+            <table class="totaux">
+                <tr>
+                    <td>Total HT</td>
+                    <td>{{ facture.total_ht }} €</td>
+                </tr>
+                <tr>
+                    <td>TVA</td>
+                    <td>{{ facture.total_tva }} €</td>
+                </tr>
+                <tr class="total-ttc">
+                    <td>Total TTC</td>
+                    <td>{{ facture.total_ttc }} €</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Notes -->
+        <!-- {% if facture.notes %}
+        <div class="notes">
+            <h4>Notes</h4>
+            <p>{{ facture.notes|linebreaksbr }}</p>
+        </div>
+        {% endif %} -->
+    </div>
+
+    <!-- Pied de page -->
+    <div class="footer">
+        {{ utilisateur.company_name|default:utilisateur.get_full_name }}
+        {% if utilisateur.siret %} — SIRET : {{ utilisateur.siret }}{% endif %}
+        {% if utilisateur.address %} — {{ utilisateur.address }}, {{ utilisateur.postal_code }} {{ utilisateur.city }}{% endif %}
+    </div>
+</body>
+</html>
