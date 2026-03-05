@@ -8,10 +8,16 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Répertoire de travail
 WORKDIR /app
 
-# Installation des dépendances système
+# Installation des dépendances système (+ WeasyPrint)
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf-2.0-0 \
+    libffi-dev \
+    libcairo2 \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copie et installation des dépendances Python

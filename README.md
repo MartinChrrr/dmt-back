@@ -121,3 +121,32 @@ gestion-devis-factures/
 ├── invoices/       # Factures (à venir)
 └── docker-compose.yml
 ```
+
+
+## Tests clients
+# 1. Liste les fichiers de migration
+docker compose exec web ls -la clients/migrations/
+
+# 2. Vérifie l'état des migrations
+docker compose exec web python manage.py showmigrations clients
+
+# 3. Recrée les migrations si nécessaire
+docker compose exec web python manage.py makemigrations clients
+
+# 4. Applique
+docker compose exec web python manage.py migrate
+
+# 5. Relance les tests
+docker compose exec web python manage.py test clients -v 2
+
+
+## Tests clients
+
+# 1. Crée ma mgration
+docker compose exec web python manage.py makemigrations accounts
+
+# 2. Applique
+docker compose exec web python manage.py migrate
+
+# 3. Lance les tests
+docker compose exec web python manage.py test accounts -v 2
