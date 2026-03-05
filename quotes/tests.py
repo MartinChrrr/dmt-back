@@ -57,7 +57,7 @@ class QuoteModelTest(QuoteTestMixin, TestCase):
     def test_number_auto_generated_with_config_prefix(self):
         resp = self._create_quote()
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        quote = Quote.objects.get(pk=resp.data['id'])
+        quote = Quote.objects.get(pk=resp.data['data']['id'])
         year = date.today().year
         self.assertEqual(quote.numero, f'DEV-{year}-001')
 
@@ -65,42 +65,42 @@ class QuoteModelTest(QuoteTestMixin, TestCase):
         self._create_quote()
         resp2 = self._create_quote()
         year = date.today().year
-        self.assertEqual(resp2.data['numero'], f'DEV-{year}-002')
+        self.assertEqual(resp2.data['data']['numero'], f'DEV-{year}-002')
 
     def test_number_uses_custom_prefix(self):
         self.config.quote_prefix = 'QT'
         self.config.save()
         resp = self._create_quote()
         year = date.today().year
-        self.assertTrue(resp.data['numero'].startswith(f'QT-{year}-'))
+        self.assertTrue(resp.data['data']['numero'].startswith(f'QT-{year}-'))
 
     def test_is_editable_draft(self):
         resp = self._create_quote()
-        quote = Quote.objects.get(pk=resp.data['id'])
+        quote = Quote.objects.get(pk=resp.data['data']['id'])
         self.assertTrue(quote.is_editable)
 
     def test_is_editable_false_if_sent(self):
         resp = self._create_quote()
-        quote = Quote.objects.get(pk=resp.data['id'])
+        quote = Quote.objects.get(pk=resp.data['data']['id'])
         quote.statut = Quote.STATUT_ENVOYE
         quote.save()
         self.assertFalse(quote.is_editable)
 
     def test_is_deletable_draft(self):
         resp = self._create_quote()
-        quote = Quote.objects.get(pk=resp.data['id'])
+        quote = Quote.objects.get(pk=resp.data['data']['id'])
         self.assertTrue(quote.is_deletable)
 
     def test_is_deletable_false_if_accepted(self):
         resp = self._create_quote()
-        quote = Quote.objects.get(pk=resp.data['id'])
+        quote = Quote.objects.get(pk=resp.data['data']['id'])
         quote.statut = Quote.STATUT_ACCEPTE
         quote.save()
         self.assertFalse(quote.is_deletable)
 
     def test_delete_forbidden_if_not_draft(self):
         resp = self._create_quote()
-        quote = Quote.objects.get(pk=resp.data['id'])
+        quote = Quote.objects.get(pk=resp.data['data']['id'])
         quote.statut = Quote.STATUT_ENVOYE
         quote.save()
         with self.assertRaises(ValueError):
@@ -108,7 +108,7 @@ class QuoteModelTest(QuoteTestMixin, TestCase):
 
     def test_soft_delete_cascade(self):
         resp = self._create_quote()
-        quote = Quote.objects.get(pk=resp.data['id'])
+        quote = Quote.objects.get(pk=resp.data['data']['id'])
         line_id = quote.lignes.first().pk
         history_id = quote.historique.first().pk
         quote.delete()
@@ -119,7 +119,7 @@ class QuoteModelTest(QuoteTestMixin, TestCase):
 
     def test_calculate_totals(self):
         resp = self._create_quote()
-        quote = Quote.objects.get(pk=resp.data['id'])
+        quote = Quote.objects.get(pk=resp.data['data']['id'])
         # 2 * 100 = 200 HT, VAT 20% = 40, TTC = 240
         self.assertEqual(quote.total_ht, Decimal('200.00'))
         self.assertEqual(quote.total_tva, Decimal('40.00'))
@@ -135,7 +135,7 @@ class QuoteValidityDateTest(QuoteTestMixin, TestCase):
     def test_validity_date_auto_calculated(self):
         resp = self._create_quote()
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        quote = Quote.objects.get(pk=resp.data['id'])
+        quote = Quote.objects.get(pk=resp.data['data']['id'])
         expected = quote.date_emission + timedelta(days=30)
         self.assertEqual(quote.date_validite, expected)
 
@@ -143,14 +143,14 @@ class QuoteValidityDateTest(QuoteTestMixin, TestCase):
         custom_date = (date.today() + timedelta(days=60)).isoformat()
         resp = self._create_quote(date_validite=custom_date)
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        quote = Quote.objects.get(pk=resp.data['id'])
+        quote = Quote.objects.get(pk=resp.data['data']['id'])
         self.assertEqual(quote.date_validite, date.today() + timedelta(days=60))
 
     def test_validity_date_uses_custom_config(self):
         self.config.quote_validity_days = 15
         self.config.save()
         resp = self._create_quote()
-        quote = Quote.objects.get(pk=resp.data['id'])
+        quote = Quote.objects.get(pk=resp.data['data']['id'])
         expected = quote.date_emission + timedelta(days=15)
         self.assertEqual(quote.date_validite, expected)
 
@@ -164,12 +164,13 @@ class QuoteAPITest(QuoteTestMixin, TestCase):
     def test_create_quote(self):
         resp = self._create_quote()
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        self.assertIn('numero', resp.data)
-        self.assertEqual(resp.data['statut'], 'BROUILLON')
+        self.assertEqual(resp.data['status'], 'success')
+        self.assertIn('numero', resp.data['data'])
+        self.assertEqual(resp.data['data']['statut'], 'BROUILLON')
 
     def test_create_quote_creates_history(self):
         resp = self._create_quote()
-        quote = Quote.objects.get(pk=resp.data['id'])
+        quote = Quote.objects.get(pk=resp.data['data']['id'])
         hist = quote.historique.first()
         self.assertIsNone(hist.ancien_statut)
         self.assertEqual(hist.nouveau_statut, 'BROUILLON')
@@ -192,22 +193,23 @@ class QuoteAPITest(QuoteTestMixin, TestCase):
         }, format='json')
 
         resp = self.api.get('/api/quotes/')
-        self.assertEqual(resp.data['count'], 1)
+        self.assertEqual(resp.data['data']['count'], 1)
 
     def test_update_draft_ok(self):
         resp = self._create_quote()
-        quote_id = resp.data['id']
+        quote_id = resp.data['data']['id']
         resp2 = self.api.patch(
             f'/api/quotes/{quote_id}/',
             {'objet': 'Modified'},
             format='json',
         )
         self.assertEqual(resp2.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp2.data['objet'], 'Modified')
+        self.assertEqual(resp2.data['status'], 'success')
+        self.assertEqual(resp2.data['data']['objet'], 'Modified')
 
     def test_update_non_draft_forbidden(self):
         resp = self._create_quote()
-        quote_id = resp.data['id']
+        quote_id = resp.data['data']['id']
         self.api.post(f'/api/quotes/{quote_id}/changer_statut/', {'statut': 'ENVOYE'}, format='json')
         resp2 = self.api.patch(
             f'/api/quotes/{quote_id}/',
@@ -215,10 +217,11 @@ class QuoteAPITest(QuoteTestMixin, TestCase):
             format='json',
         )
         self.assertEqual(resp2.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(resp2.data['status'], 'fail')
 
     def test_put_non_draft_forbidden(self):
         resp = self._create_quote()
-        quote_id = resp.data['id']
+        quote_id = resp.data['data']['id']
         self.api.post(f'/api/quotes/{quote_id}/changer_statut/', {'statut': 'ENVOYE'}, format='json')
         resp2 = self.api.put(
             f'/api/quotes/{quote_id}/',
@@ -231,26 +234,28 @@ class QuoteAPITest(QuoteTestMixin, TestCase):
             format='json',
         )
         self.assertEqual(resp2.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(resp2.data['status'], 'fail')
 
     def test_delete_draft_ok(self):
         resp = self._create_quote()
-        quote_id = resp.data['id']
+        quote_id = resp.data['data']['id']
         resp2 = self.api.delete(f'/api/quotes/{quote_id}/')
         self.assertEqual(resp2.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_delete_non_draft_forbidden(self):
         resp = self._create_quote()
-        quote_id = resp.data['id']
+        quote_id = resp.data['data']['id']
         self.api.post(f'/api/quotes/{quote_id}/changer_statut/', {'statut': 'ENVOYE'}, format='json')
         resp2 = self.api.delete(f'/api/quotes/{quote_id}/')
         self.assertEqual(resp2.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(resp2.data['status'], 'fail')
 
     def test_client_not_modifiable_on_update(self):
         other_client = Client.objects.create(
             utilisateur=self.user, raison_sociale='Other Client'
         )
         resp = self._create_quote()
-        quote_id = resp.data['id']
+        quote_id = resp.data['data']['id']
         resp2 = self.api.patch(
             f'/api/quotes/{quote_id}/',
             {'client_id': other_client.pk},
@@ -269,17 +274,18 @@ class QuoteChangeStatusTest(QuoteTestMixin, TestCase):
 
     def test_change_status_ok(self):
         resp = self._create_quote()
-        quote_id = resp.data['id']
+        quote_id = resp.data['data']['id']
         resp2 = self.api.post(
             f'/api/quotes/{quote_id}/changer_statut/',
             {'statut': 'ENVOYE'},
             format='json',
         )
         self.assertEqual(resp2.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp2.data['status'], 'success')
 
     def test_change_status_creates_history(self):
         resp = self._create_quote()
-        quote_id = resp.data['id']
+        quote_id = resp.data['data']['id']
         self.api.post(f'/api/quotes/{quote_id}/changer_statut/', {'statut': 'ENVOYE'}, format='json')
         quote = Quote.objects.get(pk=quote_id)
         hist = quote.historique.order_by('-created_at').first()
@@ -288,15 +294,17 @@ class QuoteChangeStatusTest(QuoteTestMixin, TestCase):
 
     def test_change_status_invalid(self):
         resp = self._create_quote()
-        quote_id = resp.data['id']
+        quote_id = resp.data['data']['id']
         resp2 = self.api.post(
             f'/api/quotes/{quote_id}/changer_statut/',
             {'statut': 'NONEXISTENT'},
             format='json',
         )
         self.assertEqual(resp2.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(resp2.data['status'], 'fail')
 
     def test_unauthenticated_access_denied(self):
         api = APIClient()
         resp = api.get('/api/quotes/')
         self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(resp.data['status'], 'fail')

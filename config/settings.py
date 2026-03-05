@@ -114,6 +114,10 @@ REST_FRAMEWORK = {
     ],
     'DATETIME_FORMAT': '%Y-%m-%d %H:%M:%S',
     'DATE_FORMAT': '%Y-%m-%d',
+    'DEFAULT_RENDERER_CLASSES': [
+        'config.renderers.JSendRenderer',
+    ],
+    'EXCEPTION_HANDLER': 'config.exception_handlers.jsend_exception_handler',
 }
 
 # JWT Configuration

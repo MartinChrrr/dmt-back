@@ -31,10 +31,11 @@ class RegisterTestCase(TestCase):
             self.register_url, self.valid_data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('access', response.data)
-        self.assertIn('refresh', response.data)
-        self.assertIn('user', response.data)
-        self.assertEqual(response.data['user']['email'], 'nouveau@test.com')
+        self.assertEqual(response.data['status'], 'success')
+        self.assertIn('access', response.data['data'])
+        self.assertIn('refresh', response.data['data'])
+        self.assertIn('user', response.data['data'])
+        self.assertEqual(response.data['data']['user']['email'], 'nouveau@test.com')
 
     def test_register_creates_configuration(self):
         """Registration automatically creates a UserConfiguration"""
@@ -53,6 +54,7 @@ class RegisterTestCase(TestCase):
             self.register_url, data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['status'], 'fail')
 
     def test_register_password_too_simple(self):
         """Too simple password -> 400"""
@@ -65,6 +67,7 @@ class RegisterTestCase(TestCase):
             self.register_url, data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['status'], 'fail')
 
     def test_register_email_required(self):
         """Email is required"""
@@ -74,6 +77,7 @@ class RegisterTestCase(TestCase):
             self.register_url, data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['status'], 'fail')
 
     def test_register_first_last_name_required(self):
         """First name and last name are required"""
@@ -84,6 +88,7 @@ class RegisterTestCase(TestCase):
             self.register_url, data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['status'], 'fail')
 
     def test_register_duplicate_email(self):
         """Already used email -> 400"""
@@ -95,6 +100,7 @@ class RegisterTestCase(TestCase):
             self.register_url, self.valid_data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['status'], 'fail')
 
 
 class LoginTestCase(TestCase):
@@ -116,8 +122,9 @@ class LoginTestCase(TestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('access', response.data)
-        self.assertIn('refresh', response.data)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertIn('access', response.data['data'])
+        self.assertIn('refresh', response.data['data'])
 
     def test_login_wrong_password(self):
         """Wrong password -> 401"""
@@ -127,6 +134,7 @@ class LoginTestCase(TestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['status'], 'fail')
 
     def test_login_nonexistent_user(self):
         """Nonexistent user -> 401"""
@@ -136,6 +144,7 @@ class LoginTestCase(TestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['status'], 'fail')
 
 
 class LogoutTestCase(TestCase):
@@ -159,6 +168,7 @@ class LogoutTestCase(TestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'success')
 
     def test_logout_blacklists_token(self):
         """Refresh token is blacklisted after logout"""
@@ -207,7 +217,8 @@ class TokenRefreshTestCase(TestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('access', response.data)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertIn('access', response.data['data'])
 
     def test_refresh_token_invalid(self):
         """Invalid token -> 401"""
@@ -217,6 +228,7 @@ class TokenRefreshTestCase(TestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['status'], 'fail')
 
 
 class CurrentUserTestCase(TestCase):
@@ -236,15 +248,17 @@ class CurrentUserTestCase(TestCase):
         """Returns the connected user's info"""
         response = self.api_client.get(self.me_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['email'], 'test@test.com')
-        self.assertEqual(response.data['first_name'], 'Jean')
-        self.assertEqual(response.data['company_name'], 'Ma Boîte')
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['email'], 'test@test.com')
+        self.assertEqual(response.data['data']['first_name'], 'Jean')
+        self.assertEqual(response.data['data']['company_name'], 'Ma Boîte')
 
     def test_get_current_user_unauthenticated(self):
         """Not connected -> 401"""
         self.api_client.force_authenticate(user=None)
         response = self.api_client.get(self.me_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['status'], 'fail')
 
 
 class UserProfileTestCase(TestCase):
@@ -264,7 +278,8 @@ class UserProfileTestCase(TestCase):
         """GET returns the profile"""
         response = self.api_client.get(self.profile_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['email'], 'test@test.com')
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['email'], 'test@test.com')
 
     def test_patch_profile(self):
         """PATCH partially updates the profile"""
@@ -274,8 +289,9 @@ class UserProfileTestCase(TestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['company_name'], 'Nouvelle Boîte')
-        self.assertEqual(response.data['phone'], '06 12 34 56 78')
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['company_name'], 'Nouvelle Boîte')
+        self.assertEqual(response.data['data']['phone'], '06 12 34 56 78')
 
     def test_put_profile(self):
         """PUT updates the profile"""
@@ -296,14 +312,16 @@ class UserProfileTestCase(TestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['first_name'], 'Pierre')
-        self.assertEqual(response.data['city'], 'Grenoble')
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['first_name'], 'Pierre')
+        self.assertEqual(response.data['data']['city'], 'Grenoble')
 
     def test_profile_unauthenticated(self):
         """Not connected -> 401"""
         self.api_client.force_authenticate(user=None)
         response = self.api_client.get(self.profile_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['status'], 'fail')
 
 
 class UserConfigurationTestCase(TestCase):
@@ -323,10 +341,11 @@ class UserConfigurationTestCase(TestCase):
         """GET returns the configuration with default values"""
         response = self.api_client.get(self.config_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['quote_prefix'], 'DEV')
-        self.assertEqual(response.data['invoice_prefix'], 'FAC')
-        self.assertEqual(response.data['payment_deadline_days'], 30)
-        self.assertEqual(response.data['next_quote_number'], 1)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['quote_prefix'], 'DEV')
+        self.assertEqual(response.data['data']['invoice_prefix'], 'FAC')
+        self.assertEqual(response.data['data']['payment_deadline_days'], 30)
+        self.assertEqual(response.data['data']['next_quote_number'], 1)
 
     def test_patch_configuration(self):
         """PATCH partially updates the configuration"""
@@ -340,9 +359,10 @@ class UserConfigurationTestCase(TestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['quote_prefix'], 'D')
-        self.assertEqual(response.data['invoice_prefix'], 'F')
-        self.assertEqual(response.data['payment_deadline_days'], 60)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['quote_prefix'], 'D')
+        self.assertEqual(response.data['data']['invoice_prefix'], 'F')
+        self.assertEqual(response.data['data']['payment_deadline_days'], 60)
 
     def test_configuration_isolation(self):
         """A user cannot see another user's config"""
@@ -355,10 +375,11 @@ class UserConfigurationTestCase(TestCase):
         )
         # The returned config is that of the connected user
         response = self.api_client.get(self.config_url)
-        self.assertEqual(response.data['quote_prefix'], 'DEV')
+        self.assertEqual(response.data['data']['quote_prefix'], 'DEV')
 
     def test_configuration_unauthenticated(self):
         """Not connected -> 401"""
         self.api_client.force_authenticate(user=None)
         response = self.api_client.get(self.config_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['status'], 'fail')

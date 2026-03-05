@@ -44,13 +44,15 @@ class ServiceAPITestCase(TestCase):
         """An authenticated user sees their services"""
         response = self.api_client.get('/api/services/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['count'], 1)
 
     def test_list_services_unauthenticated(self):
         """An unauthenticated user receives a 401"""
         self.api_client.force_authenticate(user=None)
         response = self.api_client.get('/api/services/')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['status'], 'fail')
 
     def test_list_services_isolation(self):
         """A user does not see another user's services"""
@@ -62,9 +64,9 @@ class ServiceAPITestCase(TestCase):
             taux_tva=Decimal("20.00"),
         )
         response = self.api_client.get('/api/services/')
-        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['data']['count'], 1)
         self.assertEqual(
-            response.data['results'][0]['label'],
+            response.data['data']['results'][0]['label'],
             "Développement web"
         )
 
@@ -85,7 +87,8 @@ class ServiceAPITestCase(TestCase):
             '/api/services/', data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['label'], "Consulting")
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['label'], "Consulting")
 
     def test_create_service_user_auto(self):
         """The user is automatically associated with the service"""
@@ -98,7 +101,7 @@ class ServiceAPITestCase(TestCase):
         response = self.api_client.post(
             '/api/services/', data, format='json'
         )
-        service = Service.objects.get(id=response.data['id'])
+        service = Service.objects.get(id=response.data['data']['id'])
         self.assertEqual(service.utilisateur, self.user1)
 
     def test_create_service_label_required(self):
@@ -112,7 +115,8 @@ class ServiceAPITestCase(TestCase):
             '/api/services/', data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('label', response.data)
+        self.assertEqual(response.data['status'], 'fail')
+        self.assertIn('label', response.data['data'])
 
     def test_create_service_unit_price_required(self):
         """Unit price excl. tax is required"""
@@ -125,7 +129,8 @@ class ServiceAPITestCase(TestCase):
             '/api/services/', data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('unit_price_excl_tax', response.data)
+        self.assertEqual(response.data['status'], 'fail')
+        self.assertIn('unit_price_excl_tax', response.data['data'])
 
     def test_create_service_unit_invalid(self):
         """An invalid unit is rejected"""
@@ -139,7 +144,8 @@ class ServiceAPITestCase(TestCase):
             '/api/services/', data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('unit', response.data)
+        self.assertEqual(response.data['status'], 'fail')
+        self.assertIn('unit', response.data['data'])
 
     def test_create_service_vat_invalid(self):
         """An invalid VAT rate is rejected"""
@@ -153,7 +159,8 @@ class ServiceAPITestCase(TestCase):
             '/api/services/', data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('taux_tva', response.data)
+        self.assertEqual(response.data['status'], 'fail')
+        self.assertIn('taux_tva', response.data['data'])
 
     def test_create_service_without_description(self):
         """Create a service without description (optional field)"""
@@ -167,7 +174,8 @@ class ServiceAPITestCase(TestCase):
             '/api/services/', data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['description'], "")
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['description'], "")
 
     # -------------------------
     # TESTS RETRIEVE (GET /services/{id}/)
@@ -179,7 +187,8 @@ class ServiceAPITestCase(TestCase):
             f'/api/services/{self.service.id}/'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['label'], "Développement web")
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['label'], "Développement web")
 
     def test_retrieve_service_other_user(self):
         """Cannot retrieve another user's service"""
@@ -194,6 +203,7 @@ class ServiceAPITestCase(TestCase):
             f'/api/services/{service_user2.id}/'
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['status'], 'fail')
 
     # -------------------------
     # TESTS UPDATE (PUT/PATCH /services/{id}/)
@@ -213,8 +223,9 @@ class ServiceAPITestCase(TestCase):
             data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['label'], "Développement fullstack")
-        self.assertEqual(response.data['unit_price_excl_tax'], "500.00")
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['label'], "Développement fullstack")
+        self.assertEqual(response.data['data']['unit_price_excl_tax'], "500.00")
 
     def test_partial_update_service(self):
         """Partial update of a service"""
@@ -223,7 +234,8 @@ class ServiceAPITestCase(TestCase):
             {"unit_price_excl_tax": "550.00"}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['unit_price_excl_tax'], "550.00")
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['unit_price_excl_tax'], "550.00")
 
     def test_update_service_other_user(self):
         """Cannot update another user's service"""
@@ -239,6 +251,7 @@ class ServiceAPITestCase(TestCase):
             {"label": "Hacked"}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['status'], 'fail')
 
     # -------------------------
     # TESTS DELETE (DELETE /services/{id}/)

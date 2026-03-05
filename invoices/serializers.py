@@ -85,7 +85,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 config = UserConfiguration.objects.get(user=user)
                 date_emission = validated_data.get('date_emission', timezone.now().date())
                 
-                ['date_echeance'] = date_emission + timedelta(days=config.payment_deadline_days)
+                validated_data['date_echeance'] = date_emission + timedelta(days=config.payment_deadline_days)
 
             invoice = Invoice.objects.create(**validated_data)
 
