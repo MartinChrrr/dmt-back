@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from rest_framework import serializers
 from clients.serializers import ClientSerializer
 from clients.models import Client
@@ -97,7 +97,7 @@ class DevisSerializer(serializers.ModelSerializer):
         if not validated_data.get('date_validite'):
             user = validated_data['utilisateur']
             config, _ = UserConfiguration.objects.get_or_create(user=user)
-            date_emission = validated_data.get('date_emission') or Devis._meta.get_field('date_emission').default()
+            date_emission = validated_data.get('date_emission') or date.today()
             validated_data['date_validite'] = date_emission + timedelta(days=config.quote_validity_days)
 
         # Create the quotation

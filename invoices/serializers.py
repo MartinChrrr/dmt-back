@@ -191,8 +191,10 @@ class FactureFromDevisSerializer(serializers.Serializer):
         except Devis.DoesNotExist:
             raise serializers.ValidationError("Devis introuvable.")
 
-        if devis.statut != Devis.STATUT_ACCEPTE:
-            raise serializers.ValidationError("Seul un devis accepté peut être transformé en facture.")
+        if devis.statut not in (Devis.STATUT_ENVOYE, Devis.STATUT_ACCEPTE):
+            raise serializers.ValidationError(
+                "Seul un devis envoyé ou accepté peut être transformé en facture."
+            )
 
         if hasattr(devis, 'facture') and devis.facture and devis.facture.deleted_at is None:
             raise serializers.ValidationError("Ce devis a déjà été transformé en facture.")
@@ -201,10 +203,23 @@ class FactureFromDevisSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
+        from quotes.models import HistoriqueDevis
+
         devis = self.devis
         utilisateur = self.context['request'].user
 
         with transaction.atomic():
+            # Passer le devis en ACCEPTE s'il ne l'est pas déjà
+            if devis.statut != devis.STATUT_ACCEPTE:
+                ancien_statut = devis.statut
+                devis.statut = devis.STATUT_ACCEPTE
+                devis.save(update_fields=['statut'])
+                HistoriqueDevis.objects.create(
+                    devis=devis,
+                    ancien_statut=ancien_statut,
+                    nouveau_statut=devis.STATUT_ACCEPTE,
+                )
+
             from accounts.models import UserConfiguration
             config = UserConfiguration.objects.get(user=utilisateur)
 
@@ -240,6 +255,18 @@ class FactureFromDevisSerializer(serializers.Serializer):
                 facture=facture,
                 ancien_statut=None,
                 nouveau_statut=Facture.STATUT_BROUILLON,
+            )
+
+            # Passer la facture en ENVOYEE avec génération du numéro
+            from invoices.views import FactureViewSet
+            facture.numero = FactureViewSet._generer_numero(utilisateur)
+            facture.statut = Facture.STATUT_ENVOYEE
+            facture.save(update_fields=['statut', 'numero'])
+
+            HistoriqueFacture.objects.create(
+                facture=facture,
+                ancien_statut=Facture.STATUT_BROUILLON,
+                nouveau_statut=Facture.STATUT_ENVOYEE,
             )
 
         return facture

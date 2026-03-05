@@ -92,10 +92,10 @@ class FactureViewSet(viewsets.ModelViewSet):
         Facture.STATUT_PAYEE: [],
     }
 
-    @action(detail=True, methods=['post'], url_path='changer-statut')
+    @action(detail=True, methods=['post'])
     def changer_statut(self, request, pk=None):
         """
-        POST /invoices/{id}/changer-statut/
+        POST /invoices/{id}/changer_statut/
         Body : { "statut": "ENVOYEE" }
         """
         facture = self.get_object()

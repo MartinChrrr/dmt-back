@@ -1,3 +1,4 @@
+from datetime import date
 from django.db import models
 from django.utils import timezone
 from decimal import Decimal
@@ -59,7 +60,7 @@ class Devis(SoftDeleteModel):
         verbose_name='Client'
     )
     numero = models.CharField(max_length=50, unique=True, blank=True, verbose_name='Numéro')
-    date_emission = models.DateField(default=timezone.now, verbose_name='Date d\'émission')
+    date_emission = models.DateField(default=date.today, verbose_name='Date d\'émission')
     date_validite = models.DateField(null=True, blank=True, verbose_name='Date de validité')
     statut = models.CharField(
         max_length=20,
