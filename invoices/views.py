@@ -13,10 +13,7 @@ from clients.models import Address
 from rest_framework.permissions import IsAuthenticated
 
 
-# -------------------------------------------------------------------------
 # Filters
-# -------------------------------------------------------------------------
-
 class InvoiceFilter(FilterSet):
     date_emission = DateFromToRangeFilter()
     date_echeance = DateFromToRangeFilter()
