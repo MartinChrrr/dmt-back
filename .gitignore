@@ -24,3 +24,5 @@ staticfiles/
 
 # macOS
 .DS_Store
+
+.certif
