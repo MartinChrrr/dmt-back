@@ -41,7 +41,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'email', 'username', 'password', 'password_confirm',
+            'email', 'password', 'password_confirm',
             'first_name', 'last_name', 'company_name', 'siret',
             'address', 'postal_code', 'city', 'phone'
         ]
@@ -59,6 +59,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop('password_confirm')
+        validated_data['username'] = validated_data['email']
         user = User.objects.create_user(**validated_data)
         # Automatically create the configuration
         UserConfiguration.objects.create(user=user)
