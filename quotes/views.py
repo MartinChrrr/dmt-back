@@ -4,9 +4,13 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+import weasyprint
 
 from .models import Quote, QuoteLine, QuoteHistory
 from .serializers import QuoteSerializer, QuoteLineSerializer, QuoteHistorySerializer
+from clients.models import Address
 
 
 class QuoteViewSet(viewsets.ModelViewSet):
@@ -24,6 +28,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
     - PATCH  /api/devis/{id}/                -> Update a quote (partial)
     - DELETE /api/devis/{id}/                -> Delete a quote (soft delete)
     - POST   /api/devis/{id}/changer_statut/ -> Change status
+    - GET    /api/devis/{id}/pdf/            -> Generate PDF
     """
 
 
@@ -111,6 +116,41 @@ class QuoteViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK
         )
+
+    # Action: generate PDF
+    @action(detail=True, methods=['get'], url_path='pdf')
+    def generate_pdf(self, request, pk=None):
+        """
+        GET /api/devis/{id}/pdf/
+        Generate and return the quote PDF.
+        """
+        quote = self.get_object()
+        lines = quote.lignes.all()
+
+        # Client billing address (fallback to headquarters)
+        address = (
+            Address.objects
+            .filter(client=quote.client, type=Address.AddressType.FACTURATION)
+            .first()
+        ) or (
+            Address.objects
+            .filter(client=quote.client, type=Address.AddressType.SIEGE)
+            .first()
+        )
+
+        html = render_to_string('quotes/quotes_pdf.html', {
+            'devis': quote,
+            'lignes': lines,
+            'adresse': address,
+            'utilisateur': quote.utilisateur,
+        })
+
+        pdf = weasyprint.HTML(string=html).write_pdf()
+
+        filename = f"{quote.numero or f'draft-{quote.pk}'}.pdf"
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 
 class QuoteLineViewSet(viewsets.ModelViewSet):
