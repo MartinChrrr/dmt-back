@@ -30,10 +30,7 @@ class InvoiceFilter(FilterSet):
         }
 
 
-# -------------------------------------------------------------------------
 # ViewSet
-# -------------------------------------------------------------------------
-
 class InvoiceViewSet(viewsets.ModelViewSet):
     """
     CRUD for invoices with nested lines.
@@ -81,10 +78,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-    # -------------------------------------------------------------------------
     # Action: status change
-    # -------------------------------------------------------------------------
-
     TRANSITIONS = {
         Invoice.STATUT_BROUILLON: [Invoice.STATUT_ENVOYEE],
         Invoice.STATUT_ENVOYEE: [Invoice.STATUT_PAYEE, Invoice.STATUT_EN_RETARD],
@@ -153,10 +147,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         config.save(update_fields=['next_invoice_number'])
         return number
 
-    # -------------------------------------------------------------------------
-    # Action: create invoice from quote
-    # -------------------------------------------------------------------------
 
+    # Action: create invoice from quote
     @action(detail=False, methods=['post'], url_path='from-devis')
     def from_devis(self, request):
         """
@@ -175,10 +167,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-    # -------------------------------------------------------------------------
-    # Action: generate PDF
-    # -------------------------------------------------------------------------
 
+    # Action: generate PDF
     @action(detail=True, methods=['get'], url_path='pdf')
     def generate_pdf(self, request, pk=None):
         """

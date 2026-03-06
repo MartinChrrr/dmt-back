@@ -67,10 +67,7 @@ class InvoiceTestMixin:
         return quote_id
 
 
-# =========================================================================
 # MODEL
-# =========================================================================
-
 class InvoiceModelTest(InvoiceTestMixin, TestCase):
 
     def test_is_editable_draft(self):
@@ -121,10 +118,7 @@ class InvoiceModelTest(InvoiceTestMixin, TestCase):
         self.assertEqual(invoice.total_ttc, Decimal('240.00'))
 
 
-# =========================================================================
 # API CRUD
-# =========================================================================
-
 class InvoiceAPITest(InvoiceTestMixin, TestCase):
 
     def test_create_invoice(self):
@@ -240,10 +234,8 @@ class InvoiceAPITest(InvoiceTestMixin, TestCase):
         self.assertEqual(resp.data['status'], 'fail')
 
 
-# =========================================================================
-# CHANGE STATUS
-# =========================================================================
 
+# CHANGE STATUS
 class InvoiceChangeStatusTest(InvoiceTestMixin, TestCase):
 
     def test_draft_to_sent(self):
@@ -340,10 +332,8 @@ class InvoiceChangeStatusTest(InvoiceTestMixin, TestCase):
         self.assertEqual(resp2.data['status'], 'fail')
 
 
-# =========================================================================
-# CREATE FROM QUOTE
-# =========================================================================
 
+# CREATE FROM QUOTE
 class InvoiceFromQuoteTest(InvoiceTestMixin, TestCase):
 
     def test_from_accepted_quote(self):

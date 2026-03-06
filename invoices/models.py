@@ -5,10 +5,7 @@ from django.utils import timezone
 from decimal import Decimal
 
 
-# -------------------------------------------------------------------------
 # SOFT DELETE (reusable — eventually to be shared in a common module)
-# -------------------------------------------------------------------------
-
 class SoftDeleteManager(models.Manager):
     """Manager that automatically excludes deleted objects"""
     def get_queryset(self):
@@ -31,10 +28,7 @@ class SoftDeleteModel(models.Model):
         self.save(update_fields=['deleted_at'])
 
 
-# -------------------------------------------------------------------------
 # INVOICE
-# -------------------------------------------------------------------------
-
 class Invoice(SoftDeleteModel):
     """Invoice issued by the user"""
     STATUT_BROUILLON = 'BROUILLON'
@@ -131,10 +125,7 @@ class Invoice(SoftDeleteModel):
         super().delete(*args, **kwargs)
 
 
-# -------------------------------------------------------------------------
 # INVOICE LINE
-# -------------------------------------------------------------------------
-
 class InvoiceLine(models.Model):
     """Invoice line (no soft delete, deleted with its parent)"""
     facture = models.ForeignKey(
@@ -190,10 +181,7 @@ class InvoiceLine(models.Model):
             self.facture.calculate_totals()
 
 
-# -------------------------------------------------------------------------
 # INVOICE HISTORY
-# -------------------------------------------------------------------------
-
 class InvoiceHistory(SoftDeleteModel):
     """Status change history"""
     facture = models.ForeignKey(

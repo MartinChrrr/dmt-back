@@ -71,9 +71,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['utilisateur', 'numero', 'statut', 'created_at', 'updated_at']
 
-    # -------------------------------------------------------------------------
     # Creation
-    # -------------------------------------------------------------------------
     def create(self, validated_data):
         lines_data = validated_data.pop('lignes', [])
         user = validated_data['utilisateur']
@@ -104,9 +102,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
         return invoice
 
-    # -------------------------------------------------------------------------
     # Update (only if DRAFT)
-    # -------------------------------------------------------------------------
     def update(self, instance, validated_data):
         if not instance.is_editable:
             raise serializers.ValidationError(
@@ -157,9 +153,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         if ids_to_delete:
             invoice.lignes.filter(id__in=ids_to_delete).delete()
 
-    # -------------------------------------------------------------------------
     # Validation
-    # -------------------------------------------------------------------------
     def validate_lignes(self, value):
         if not value:
             raise serializers.ValidationError("The invoice must contain at least one line.")
@@ -177,9 +171,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return data
 
 
-# -------------------------------------------------------------------------
 # Serializer for creating an invoice from an accepted quote
-# -------------------------------------------------------------------------
 
 class InvoiceFromQuoteSerializer(serializers.Serializer):
     """Create an invoice from an accepted quote"""
