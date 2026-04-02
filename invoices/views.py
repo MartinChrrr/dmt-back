@@ -46,7 +46,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = InvoiceFilter
-    search_fields = ['numero', 'objet']
+    search_fields = ['numero', 'objet', 'client__raison_sociale', 'client__contact_nom', 'client__email']
     ordering_fields = ['date_emission', 'date_echeance', 'created_at', 'total_ttc']
     ordering = ['-date_emission', '-created_at']
 
@@ -173,6 +173,24 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         Generate and return the invoice PDF.
         """
         invoice = self.get_object()
+
+        # Auto-transition BROUILLON → ENVOYEE on PDF generation
+        if invoice.statut == Invoice.STATUT_BROUILLON:
+            with transaction.atomic():
+                old_status = invoice.statut
+                invoice.statut = Invoice.STATUT_ENVOYEE
+
+                if not invoice.numero:
+                    invoice.numero = self._generate_number(invoice.utilisateur)
+
+                invoice.save(update_fields=['statut', 'numero'])
+
+                InvoiceHistory.objects.create(
+                    facture=invoice,
+                    ancien_statut=old_status,
+                    nouveau_statut=Invoice.STATUT_ENVOYEE,
+                )
+
         lines = invoice.lignes.all()
 
         # Client billing address (fallback to headquarters)

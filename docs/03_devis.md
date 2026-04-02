@@ -98,7 +98,7 @@ Retourne la liste paginée des devis de l'utilisateur connecté.
 |---|---|---|
 | `statut` | string | Filtre par statut (`BROUILLON`, `ENVOYE`, etc.) |
 | `client_id` | integer | Filtre par client |
-| `search` | string | Recherche dans `numero` et `objet` |
+| `search` | string | Recherche dans `numero`, `objet`, `client.raison_sociale`, `client.contact_nom` et `client.email` |
 | `ordering` | string | Tri : `date_emission`, `total_ttc`, `created_at` (préfixer par `-` pour desc) |
 
 **Exemple :** `GET /api/quotes/?statut=BROUILLON&ordering=-date_emission`

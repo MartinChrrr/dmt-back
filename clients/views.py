@@ -1,8 +1,9 @@
 from django.shortcuts import render
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, filters
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
+from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Client, Address
 from .serializers import ClientSerializer, AddressSerializer
@@ -13,6 +14,10 @@ class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['raison_sociale', 'contact_nom', 'email', 'contact_email']
+    ordering_fields = ['raison_sociale', 'created_at']
+    ordering = ['raison_sociale']
 
     def get_queryset(self):
         """Returns only the connected user's clients"""

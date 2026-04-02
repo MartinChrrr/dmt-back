@@ -114,7 +114,7 @@ Tous les endpoints nécessitent une **authentification Bearer token**.
 | `date_emission_before` | date | Date d'émission maximale |
 | `date_echeance_after` | date | Date d'échéance minimale |
 | `date_echeance_before` | date | Date d'échéance maximale |
-| `search` | string | Recherche dans `numero` et `objet` |
+| `search` | string | Recherche dans `numero`, `objet`, `client.raison_sociale`, `client.contact_nom` et `client.email` |
 | `ordering` | string | Tri : `date_emission`, `date_echeance`, `created_at`, `total_ttc` |
 
 **Exemple :** `GET /api/invoices/?statut=ENVOYEE&date_echeance_before=2025-03-01`
@@ -376,8 +376,10 @@ Convertit un devis envoyé ou accepté en facture.
 
 Génère et télécharge le PDF de la facture.
 
+**Transition automatique :** Si la facture est au statut `BROUILLON`, elle passe automatiquement au statut `ENVOYEE` lors de la génération du PDF. Un numéro de facture est généré et un historique (`InvoiceHistory`) est créé (BROUILLON → ENVOYEE). Si la facture est déjà envoyée ou dans un autre statut, aucun changement n'est effectué.
+
 **Réponse :** Fichier PDF en téléchargement (`Content-Type: application/pdf`)
 
-**Nom du fichier :** `{numero}.pdf` (ex. `FAC-2025-001.pdf`) ou `draft-{id}.pdf` si brouillon.
+**Nom du fichier :** `{numero}.pdf` (ex. `FAC-2025-001.pdf`). Comme la génération du PDF déclenche la transition vers ENVOYEE, le fichier portera toujours le numéro de facture.
 
 **Adresse utilisée :** L'adresse de facturation (`FACTURATION`) du client est utilisée en priorité, avec fallback sur l'adresse du siège (`SIEGE`).

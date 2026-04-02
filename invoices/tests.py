@@ -442,3 +442,63 @@ class InvoiceFromQuoteTest(InvoiceTestMixin, TestCase):
         )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(resp.data['status'], 'fail')
+
+
+
+# GENERATE PDF
+class InvoiceGeneratePDFTest(InvoiceTestMixin, TestCase):
+
+    def test_pdf_draft_transitions_to_sent(self):
+        """Generating a PDF for a draft invoice transitions it to ENVOYEE."""
+        resp = self._create_invoice()
+        invoice_id = resp.data['data']['id']
+        self.api.get(f'/api/invoices/{invoice_id}/pdf/')
+        invoice = Invoice.objects.get(pk=invoice_id)
+        self.assertEqual(invoice.statut, Invoice.STATUT_ENVOYEE)
+
+    def test_pdf_draft_generates_number(self):
+        """Generating a PDF for a draft invoice generates an invoice number."""
+        resp = self._create_invoice()
+        invoice_id = resp.data['data']['id']
+        self.assertIsNone(resp.data['data']['numero'])
+        self.api.get(f'/api/invoices/{invoice_id}/pdf/')
+        invoice = Invoice.objects.get(pk=invoice_id)
+        year = date.today().year
+        self.assertEqual(invoice.numero, f'FAC-{year}-001')
+
+    def test_pdf_draft_creates_history(self):
+        """Generating a PDF for a draft invoice creates a history entry."""
+        resp = self._create_invoice()
+        invoice_id = resp.data['data']['id']
+        self.api.get(f'/api/invoices/{invoice_id}/pdf/')
+        invoice = Invoice.objects.get(pk=invoice_id)
+        hist = invoice.historique.order_by('-created_at').first()
+        self.assertEqual(hist.ancien_statut, 'BROUILLON')
+        self.assertEqual(hist.nouveau_statut, 'ENVOYEE')
+
+    def test_pdf_sent_no_status_change(self):
+        """Generating a PDF for an already sent invoice does not change status."""
+        resp = self._create_invoice()
+        invoice_id = resp.data['data']['id']
+        self.api.post(f'/api/invoices/{invoice_id}/changer_statut/', {'statut': 'ENVOYEE'}, format='json')
+        history_count = InvoiceHistory.objects.filter(facture_id=invoice_id).count()
+        self.api.get(f'/api/invoices/{invoice_id}/pdf/')
+        invoice = Invoice.objects.get(pk=invoice_id)
+        self.assertEqual(invoice.statut, Invoice.STATUT_ENVOYEE)
+        self.assertEqual(InvoiceHistory.objects.filter(facture_id=invoice_id).count(), history_count)
+
+    def test_pdf_returns_pdf_response(self):
+        """The PDF endpoint returns a PDF file."""
+        resp = self._create_invoice()
+        invoice_id = resp.data['data']['id']
+        resp2 = self.api.get(f'/api/invoices/{invoice_id}/pdf/')
+        self.assertEqual(resp2.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp2['Content-Type'], 'application/pdf')
+
+    def test_pdf_filename_uses_number(self):
+        """After transition, the PDF filename uses the generated number."""
+        resp = self._create_invoice()
+        invoice_id = resp.data['data']['id']
+        resp2 = self.api.get(f'/api/invoices/{invoice_id}/pdf/')
+        invoice = Invoice.objects.get(pk=invoice_id)
+        self.assertIn(invoice.numero, resp2['Content-Disposition'])
