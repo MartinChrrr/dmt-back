@@ -56,6 +56,15 @@ Tous les endpoints nécessitent une **authentification Bearer token**.
 
 Retourne la liste paginée des clients de l'utilisateur connecté, avec leurs adresses imbriquées.
 
+**Paramètres de recherche et tri :**
+
+| Paramètre | Type | Description |
+|---|---|---|
+| `search` | string | Recherche dans `raison_sociale`, `contact_nom`, `email` et `contact_email` |
+| `ordering` | string | Tri : `raison_sociale`, `created_at` (préfixer par `-` pour desc) |
+
+**Exemple :** `GET /api/clients/?search=Dupont&ordering=-created_at`
+
 **Réponse succès (200) :**
 
 ```json

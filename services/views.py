@@ -8,7 +8,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Service.objects.filter(utilisateur=self.request.user)
+        return Service.objects.filter(utilisateur=self.request.user).order_by('id')
 
     def perform_create(self, serializer):
         serializer.save(utilisateur=self.request.user)
