@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from datetime import timedelta
 import os
@@ -64,12 +65,21 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 DATABASES = {
     'default': {
+<<<<<<< HEAD
         'ENGINE': os.environ.get('DB_ENGINE'),
         'NAME': os.environ.get('DB_NAME'),
         'USER': os.environ.get('DB_USER'),
         'PASSWORD': os.environ.get('DB_PASSWORD'),
         'HOST': os.environ.get('DB_HOST'),
         'PORT': os.environ.get('DB_PORT'),
+=======
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('DATABASE_NAME', 'devis_factures_db'),
+        'USER': os.environ.get('DATABASE_USER', 'django_user_admin'),
+        'PASSWORD': os.environ.get('DATABASE_PASSWORD', 'qwerty12345'),
+        'HOST': os.environ.get('DATABASE_HOST', 'db'),
+        'PORT': os.environ.get('DATABASE_PORT', '5432'),
+>>>>>>> b5e864925f2497b03fe5273a48b257d795dec18c
     }
 }
 

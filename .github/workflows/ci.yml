@@ -29,7 +29,11 @@ jobs:
     env:
       SECRET_KEY: ci-secret-key-not-used-in-prod
       DEBUG: "1"
-      DATABASE_URL: postgres://django_user_admin:qwerty12345@localhost:5432/devis_factures_db
+      DATABASE_HOST: localhost
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: devis_factures_db
+      DATABASE_USER: django_user_admin
+      DATABASE_PASSWORD: qwerty12345
 
     steps:
       - uses: actions/checkout@v4
