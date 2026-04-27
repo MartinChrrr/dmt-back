@@ -29,6 +29,8 @@ INSTALLED_APPS = [
     'services',
     'quotes',
     'invoices',
+    'dashboard',
+
 ]
 
 MIDDLEWARE = [
