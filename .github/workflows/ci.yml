@@ -27,7 +27,7 @@ jobs:
           --health-retries 10
 
     env:
-      SECRET_KEY: ci-secret-key-not-used-in-prod
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
       DEBUG: "1"
       DATABASE_HOST: localhost
       DATABASE_PORT: "5432"
