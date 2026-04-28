@@ -9,3 +9,4 @@ django-cors-headers==4.3.1
 django-filter==23.5
 weasyprint==61.2
 pydyf==0.10.0
+dj-database-url==2.3.0

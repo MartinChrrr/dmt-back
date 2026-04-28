@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 import os
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -66,16 +67,29 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DATABASE_NAME', 'devis_factures_db'),
-        'USER': os.environ.get('DATABASE_USER', 'django_user_admin'),
-        'PASSWORD': os.environ.get('DATABASE_PASSWORD', 'qwerty12345'),
-        'HOST': os.environ.get('DATABASE_HOST', 'db'),
-        'PORT': os.environ.get('DATABASE_PORT', '5432'),
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+if DATABASE_URL:
+    # Mode prod : Neon (ou autre Postgres distant via URL unique)
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True,
+        )
     }
-}
+else:
+    # Mode dev local : variables séparées (Docker Compose)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DATABASE_NAME', 'devis_factures_db'),
+            'USER': os.environ.get('DATABASE_USER', 'django_user_admin'),
+            'PASSWORD': os.environ.get('DATABASE_PASSWORD', 'qwerty12345'),
+            'HOST': os.environ.get('DATABASE_HOST', 'db'),
+            'PORT': os.environ.get('DATABASE_PORT', '5432'),
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
