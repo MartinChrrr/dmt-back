@@ -1,21 +1,20 @@
-# Create your tests here.
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status
-from .models import Client, Adresse
+from .models import Client, Address
 
 User = get_user_model()
 
 
 class ClientAPITestCase(TestCase):
-    """Tests CRUD pour les routes /api/clients/clients/"""
+    """CRUD tests for /api/clients/clients/ routes"""
 
     def setUp(self):
-        """Données de base pour chaque test"""
+        """Base data for each test"""
         self.api_client = APIClient()
 
-        # Créer 2 utilisateurs
+        # Create 2 users
         self.user1 = User.objects.create_user(
             username='user1', email='user1@test.com', password='testpass123'
         )
@@ -23,10 +22,10 @@ class ClientAPITestCase(TestCase):
             username='user2', email='user2@test.com', password='testpass123'
         )
 
-        # Authentifier user1
+        # Authenticate user1
         self.api_client.force_authenticate(user=self.user1)
 
-        # Créer un client pour user1
+        # Create a client for user1
         self.client_data = {
             "raison_sociale": "Dupont & Fils SARL",
             "siret": "12345678901234",
@@ -47,28 +46,29 @@ class ClientAPITestCase(TestCase):
     # -------------------------
 
     def test_list_clients_authenticated(self):
-        """Un utilisateur authentifié voit ses clients"""
+        """An authenticated user sees their clients"""
         response = self.api_client.get('/api/clients/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['count'], 1)
 
     def test_list_clients_unauthenticated(self):
-        """Un utilisateur non authentifié reçoit un 401"""
+        """An unauthenticated user receives a 401"""
         self.api_client.force_authenticate(user=None)
         response = self.api_client.get('/api/clients/')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['status'], 'fail')
 
     def test_list_clients_isolation(self):
-        """Un utilisateur ne voit pas les clients d'un autre"""
-        # Créer un client pour user2
+        """A user does not see another user's clients"""
         Client.objects.create(
             utilisateur=self.user2,
             raison_sociale="Autre Entreprise"
         )
         response = self.api_client.get('/api/clients/')
-        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['data']['count'], 1)
         self.assertEqual(
-            response.data['results'][0]['raison_sociale'],
+            response.data['data']['results'][0]['raison_sociale'],
             "Dupont & Fils SARL"
         )
 
@@ -77,7 +77,7 @@ class ClientAPITestCase(TestCase):
     # -------------------------
 
     def test_create_client(self):
-        """Création d'un client avec adresses imbriquées"""
+        """Create a client with nested addresses"""
         data = {
             "raison_sociale": "Nouvelle Entreprise",
             "siret": "98765432109876",
@@ -97,11 +97,12 @@ class ClientAPITestCase(TestCase):
             '/api/clients/', data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['raison_sociale'], "Nouvelle Entreprise")
-        self.assertEqual(len(response.data['adresses']), 1)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['raison_sociale'], "Nouvelle Entreprise")
+        self.assertEqual(len(response.data['data']['adresses']), 1)
 
-    def test_create_client_sans_adresse(self):
-        """Création d'un client sans adresse"""
+    def test_create_client_without_address(self):
+        """Create a client without address"""
         data = {
             "raison_sociale": "Client Simple",
         }
@@ -109,47 +110,50 @@ class ClientAPITestCase(TestCase):
             '/api/clients/', data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['adresses'], [])
+        self.assertEqual(response.data['data']['adresses'], [])
 
-    def test_create_client_utilisateur_auto(self):
-        """L'utilisateur est automatiquement associé au client"""
+    def test_create_client_user_auto(self):
+        """The user is automatically associated with the client"""
         data = {"raison_sociale": "Auto User Test"}
         response = self.api_client.post(
             '/api/clients/', data, format='json'
         )
-        client = Client.objects.get(id=response.data['id'])
+        client = Client.objects.get(id=response.data['data']['id'])
         self.assertEqual(client.utilisateur, self.user1)
 
     def test_create_client_raison_sociale_required(self):
-        """La raison sociale est obligatoire"""
+        """Company name is required"""
         response = self.api_client.post(
             '/api/clients/', {}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('raison_sociale', response.data)
+        self.assertEqual(response.data['status'], 'fail')
+        self.assertIn('raison_sociale', response.data['data'])
 
-    def test_create_client_doublon_raison_sociale(self):
-        """Impossible de créer deux clients avec la même raison sociale"""
+    def test_create_client_duplicate_raison_sociale(self):
+        """Cannot create two clients with the same company name"""
         data = {"raison_sociale": "Dupont & Fils SARL"}
         response = self.api_client.post(
             '/api/clients/', data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['status'], 'fail')
 
     # -------------------------
     # TESTS RETRIEVE (GET /clients/{id}/)
     # -------------------------
 
     def test_retrieve_client(self):
-        """Récupérer un client par son id"""
+        """Retrieve a client by its id"""
         response = self.api_client.get(
             f'/api/clients/{self.client_obj.id}/'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['raison_sociale'], "Dupont & Fils SARL")
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['raison_sociale'], "Dupont & Fils SARL")
 
-    def test_retrieve_client_autre_utilisateur(self):
-        """Impossible de récupérer le client d'un autre utilisateur"""
+    def test_retrieve_client_other_user(self):
+        """Cannot retrieve another user's client"""
         client_user2 = Client.objects.create(
             utilisateur=self.user2,
             raison_sociale="Client User2"
@@ -158,13 +162,14 @@ class ClientAPITestCase(TestCase):
             f'/api/clients/{client_user2.id}/'
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['status'], 'fail')
 
     # -------------------------
     # TESTS UPDATE (PUT /clients/{id}/)
     # -------------------------
 
     def test_update_client(self):
-        """Modification complète d'un client"""
+        """Full update of a client"""
         data = {
             "raison_sociale": "Dupont & Fils SAS",
             "siret": "12345678901234",
@@ -180,21 +185,22 @@ class ClientAPITestCase(TestCase):
             data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['raison_sociale'], "Dupont & Fils SAS")
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['raison_sociale'], "Dupont & Fils SAS")
 
     def test_partial_update_client(self):
-        """Modification partielle d'un client"""
+        """Partial update of a client"""
         response = self.api_client.patch(
             f'/api/clients/{self.client_obj.id}/',
             {"email": "updated@dupont-fils.fr"}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['email'], "updated@dupont-fils.fr")
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['email'], "updated@dupont-fils.fr")
 
-    def test_update_remplace_adresses(self):
-        """Le PUT avec adresses remplace les adresses existantes"""
-        # Créer une adresse existante
-        Adresse.objects.create(
+    def test_update_replaces_addresses(self):
+        """PUT with addresses replaces existing addresses"""
+        Address.objects.create(
             client=self.client_obj,
             type="SIEGE",
             ligne1="Ancienne adresse",
@@ -218,23 +224,24 @@ class ClientAPITestCase(TestCase):
             data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['adresses']), 1)
-        self.assertEqual(response.data['adresses'][0]['ville'], "Lyon")
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(len(response.data['data']['adresses']), 1)
+        self.assertEqual(response.data['data']['adresses'][0]['ville'], "Lyon")
 
     # -------------------------
     # TESTS DELETE (DELETE /clients/{id}/)
     # -------------------------
 
     def test_delete_client(self):
-        """Suppression d'un client"""
+        """Delete a client"""
         response = self.api_client.delete(
             f'/api/clients/{self.client_obj.id}/'
         )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(Client.objects.filter(id=self.client_obj.id).count(), 0)
 
-    def test_delete_client_autre_utilisateur(self):
-        """Impossible de supprimer le client d'un autre utilisateur"""
+    def test_delete_client_other_user(self):
+        """Cannot delete another user's client"""
         client_user2 = Client.objects.create(
             utilisateur=self.user2,
             raison_sociale="Client User2"
@@ -246,8 +253,8 @@ class ClientAPITestCase(TestCase):
         self.assertTrue(Client.objects.filter(id=client_user2.id).exists())
 
 
-class AdresseAPITestCase(TestCase):
-    """Tests CRUD pour les routes /api/clients/adresses/"""
+class AddressAPITestCase(TestCase):
+    """CRUD tests for /api/clients/adresses/ routes"""
 
     def setUp(self):
         self.api_client = APIClient()
@@ -268,7 +275,7 @@ class AdresseAPITestCase(TestCase):
             raison_sociale="Client Autre"
         )
 
-        self.adresse = Adresse.objects.create(
+        self.address = Address.objects.create(
             client=self.client_obj,
             type="SIEGE",
             ligne1="10 rue Victor Hugo",
@@ -281,23 +288,24 @@ class AdresseAPITestCase(TestCase):
     # TESTS LIST
     # -------------------------
 
-    def test_list_adresses(self):
-        """Liste les adresses de l'utilisateur connecté"""
+    def test_list_addresses(self):
+        """List addresses of the connected user"""
         response = self.api_client.get('/api/adresses/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['count'], 1)
 
-    def test_list_adresses_filtre_client_id(self):
-        """Filtre les adresses par client_id"""
+    def test_list_addresses_filter_client_id(self):
+        """Filter addresses by client_id"""
         response = self.api_client.get(
             f'/api/adresses/?client_id={self.client_obj.id}'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['data']['count'], 1)
 
-    def test_list_adresses_isolation(self):
-        """Un utilisateur ne voit pas les adresses d'un autre"""
-        Adresse.objects.create(
+    def test_list_addresses_isolation(self):
+        """A user does not see another user's addresses"""
+        Address.objects.create(
             client=self.client_user2,
             type="SIEGE",
             ligne1="Adresse secrète",
@@ -305,14 +313,14 @@ class AdresseAPITestCase(TestCase):
             ville="Paris"
         )
         response = self.api_client.get('/api/adresses/')
-        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['data']['count'], 1)
 
     # -------------------------
     # TESTS CREATE
     # -------------------------
 
-    def test_create_adresse(self):
-        """Création d'une adresse pour son propre client"""
+    def test_create_address(self):
+        """Create an address for own client"""
         data = {
             "client": self.client_obj.id,
             "type": "FACTURATION",
@@ -325,13 +333,14 @@ class AdresseAPITestCase(TestCase):
             '/api/adresses/', data, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['status'], 'success')
 
-    def test_create_adresse_client_autre_utilisateur(self):
-        """Impossible de créer une adresse sur le client d'un autre"""
+    def test_create_address_other_user_client(self):
+        """Cannot create an address on another user's client"""
         data = {
             "client": self.client_user2.id,
             "type": "SIEGE",
-            "ligne1": "Tentative intrusion",
+            "ligne1": "Intrusion attempt",
             "code_postal": "75000",
             "ville": "Paris",
             "pays": "France"
@@ -348,37 +357,38 @@ class AdresseAPITestCase(TestCase):
     # TESTS UPDATE
     # -------------------------
 
-    def test_update_adresse(self):
-        """Modification d'une adresse"""
+    def test_update_address(self):
+        """Update an address"""
         response = self.api_client.patch(
-            f'/api/adresses/{self.adresse.id}/',
+            f'/api/adresses/{self.address.id}/',
             {"ville": "Lyon"}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['ville'], "Lyon")
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['data']['ville'], "Lyon")
 
     # -------------------------
     # TESTS DELETE
     # -------------------------
 
-    def test_delete_adresse(self):
-        """Suppression d'une adresse"""
+    def test_delete_address(self):
+        """Delete an address"""
         response = self.api_client.delete(
-            f'/api/adresses/{self.adresse.id}/'
+            f'/api/adresses/{self.address.id}/'
         )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(Adresse.objects.filter(id=self.adresse.id).exists())
+        self.assertFalse(Address.objects.filter(id=self.address.id).exists())
 
-    def test_delete_adresse_autre_utilisateur(self):
-        """Impossible de supprimer l'adresse d'un autre utilisateur"""
-        adresse_user2 = Adresse.objects.create(
+    def test_delete_address_other_user(self):
+        """Cannot delete another user's address"""
+        address_user2 = Address.objects.create(
             client=self.client_user2,
             type="SIEGE",
-            ligne1="Adresse protégée",
+            ligne1="Protected address",
             code_postal="75000",
             ville="Paris"
         )
         response = self.api_client.delete(
-            f'/api/adresses/{adresse_user2.id}/'
+            f'/api/adresses/{address_user2.id}/'
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

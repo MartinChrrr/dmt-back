@@ -1,5 +1,7 @@
+import os
 from pathlib import Path
 from datetime import timedelta
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,12 +23,14 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     
-    # Applications locales
+    # Local applications
     'accounts',
     'clients',
     'services',
     'quotes',
     'invoices',
+    'dashboard',
+
 ]
 
 MIDDLEWARE = [
@@ -64,11 +68,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'devis_factures_db',
-        'USER': 'django_user_admin',
-        'PASSWORD': 'qwerty12345',
-        'HOST': 'db',
-        'PORT': '5432',
+        'NAME': os.environ.get('DATABASE_NAME', 'devis_factures_db'),
+        'USER': os.environ.get('DATABASE_USER', 'django_user_admin'),
+        'PASSWORD': os.environ.get('DATABASE_PASSWORD', 'qwerty12345'),
+        'HOST': os.environ.get('DATABASE_HOST', 'db'),
+        'PORT': os.environ.get('DATABASE_PORT', '5432'),
     }
 }
 
@@ -114,14 +118,18 @@ REST_FRAMEWORK = {
     ],
     'DATETIME_FORMAT': '%Y-%m-%d %H:%M:%S',
     'DATE_FORMAT': '%Y-%m-%d',
+    'DEFAULT_RENDERER_CLASSES': [
+        'config.renderers.JSendRenderer',
+    ],
+    'EXCEPTION_HANDLER': 'config.exception_handlers.jsend_exception_handler',
 }
 
 # JWT Configuration
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # Token d'accès valide 1h
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Token de refresh valide 7 jours
-    'ROTATE_REFRESH_TOKENS': True,  # Renouvelle le refresh token à chaque utilisation
-    'BLACKLIST_AFTER_ROTATION': True,  # Blacklist l'ancien refresh token
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # Access token valid for 1h
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Refresh token valid for 7 days
+    'ROTATE_REFRESH_TOKENS': True,  # Rotate refresh token on each use
+    'BLACKLIST_AFTER_ROTATION': True,  # Blacklist old refresh token
     'UPDATE_LAST_LOGIN': True,
     
     'ALGORITHM': 'HS256',
