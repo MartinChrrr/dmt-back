@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'quotes',
     'invoices',
     'dashboard',
+    'administration',
 
 ]
 

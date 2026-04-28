@@ -21,14 +21,14 @@ class QuoteViewSet(viewsets.ModelViewSet):
     API for managing quotes
 
     Available endpoints:
-    - GET    /api/devis/                     -> List all quotes
-    - POST   /api/devis/                     -> Create a quote
-    - GET    /api/devis/{id}/                -> Quote detail
-    - PUT    /api/devis/{id}/                -> Update a quote (full)
-    - PATCH  /api/devis/{id}/                -> Update a quote (partial)
-    - DELETE /api/devis/{id}/                -> Delete a quote (soft delete)
-    - POST   /api/devis/{id}/changer_statut/ -> Change status
-    - GET    /api/devis/{id}/pdf/            -> Generate PDF
+    - GET    /api/quotes/                     -> List all quotes
+    - POST   /api/quotes/                     -> Create a quote
+    - GET    /api/quotes/{id}/                -> Quote detail
+    - PUT    /api/quotes/{id}/                -> Update a quote (full)
+    - PATCH  /api/quotes/{id}/                -> Update a quote (partial)
+    - DELETE /api/quotes/{id}/                -> Delete a quote (soft delete)
+    - POST   /api/quotes/{id}/changer_statut/ -> Change status
+    - GET    /api/quotes/{id}/pdf/            -> Generate PDF
     """
 
 
@@ -80,7 +80,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
     def changer_statut(self, request, pk=None):
         # Change quote status and create a history entry
 
-        # URL: POST /api/devis/{id}/changer_statut/
+        # URL: POST /api/quotes/{id}/changer_statut/
         # Body: {"statut": "ENVOYE"}
 
         quote = self.get_object()
@@ -121,7 +121,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='pdf')
     def generate_pdf(self, request, pk=None):
         """
-        GET /api/devis/{id}/pdf/
+        GET /api/quotes/{id}/pdf/
         Generate and return the quote PDF.
         """
         quote = self.get_object()

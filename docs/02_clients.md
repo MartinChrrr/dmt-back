@@ -7,19 +7,20 @@ Chaque client appartient à un utilisateur ; un utilisateur ne voit que ses prop
 
 ### Client
 
-| Champ | Type | Requis | Description |
-|---|---|---|---|
-| `id` | integer | auto | Identifiant unique |
-| `raison_sociale` | string (255) | oui | Raison sociale / nom |
-| `siret` | string (14) | non | Numéro SIRET |
-| `email` | email | non | Email de l'entreprise |
-| `telephone` | string (20) | non | Téléphone de l'entreprise |
-| `contact_nom` | string (200) | non | Nom du contact principal |
-| `contact_email` | email | non | Email du contact |
-| `contact_telephone` | string (20) | non | Téléphone du contact |
-| `notes` | text | non | Notes libres |
-| `created_at` | datetime | auto | Date de création |
-| `updated_at` | datetime | auto | Date de dernière modification |
+| Champ | Type | Requis | Lecture seule | Description |
+|---|---|---|---|---|
+| `id` | integer | auto | oui | Identifiant unique |
+| `utilisateur` | FK → User | auto | oui | Propriétaire (rempli automatiquement) |
+| `raison_sociale` | string (255) | oui | non | Raison sociale / nom |
+| `siret` | string (14) | non | non | Numéro SIRET |
+| `email` | email | non | non | Email de l'entreprise |
+| `telephone` | string (20) | non | non | Téléphone de l'entreprise |
+| `contact_nom` | string (200) | non | non | Nom du contact principal |
+| `contact_email` | email | non | non | Email du contact |
+| `contact_telephone` | string (20) | non | non | Téléphone du contact |
+| `notes` | text | non | non | Notes libres |
+| `created_at` | datetime | auto | oui | Date de création |
+| `updated_at` | datetime | auto | oui | Date de dernière modification |
 
 **Contrainte d'unicité :** La combinaison `(utilisateur, raison_sociale)` est unique. Un utilisateur ne peut pas avoir deux clients avec la même raison sociale.
 
@@ -195,7 +196,9 @@ Suppression définitive (hard delete) du client et de ses adresses.
 
 **Réponse succès :** 204 No Content
 
-> **Note :** Un client référencé par un devis ne peut pas être supprimé (la clé étrangère utilise `PROTECT` sur les devis).
+> **Notes :**
+> - Un client référencé par un **devis** ne peut pas être supprimé (la clé étrangère utilise `PROTECT` sur les devis) : la requête échoue avec une erreur d'intégrité.
+> - Sur les **factures**, la clé étrangère utilise `CASCADE` : supprimer un client supprime automatiquement (en dur) toutes ses factures et leurs lignes. Cette asymétrie est intentionnelle (un devis perdu reste rattrapable, une facture émise non).
 
 ---
 

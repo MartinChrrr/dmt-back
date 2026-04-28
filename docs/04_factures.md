@@ -352,7 +352,7 @@ Convertit un devis envoyé ou accepté en facture.
 ```
 
 **Comportements automatiques :**
-1. Si le devis est au statut `ENVOYE`, il passe à `ACCEPTE` (avec historique)
+1. Si le devis n'est pas déjà au statut `ACCEPTE`, il y est forcé (avec historique). Pour un devis déjà `ACCEPTE`, aucune transition n'est effectuée.
 2. Une facture est créée avec les informations du devis (client, objet, notes)
 3. Toutes les lignes du devis sont copiées dans la facture
 4. La `date_echeance` est calculée depuis `payment_deadline_days`

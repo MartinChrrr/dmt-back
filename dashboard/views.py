@@ -89,15 +89,16 @@ class DashboardStatsView(APIView):
 
     @staticmethod
     def _upcoming_deadlines(user):
+        today = timezone.localdate()
         invoice_deadlines = (
             Invoice.objects
-            .filter(utilisateur=user, statut__in=[Invoice.STATUT_ENVOYEE, Invoice.STATUT_EN_RETARD])
+            .filter(utilisateur=user, statut=Invoice.STATUT_ENVOYEE, date_echeance__gte=today)
             .select_related('client')
             .order_by('date_echeance')[:DEADLINES_LIMIT]
         )
         quote_deadlines = (
             Quote.objects
-            .filter(utilisateur=user, statut=Quote.STATUT_ENVOYE)
+            .filter(utilisateur=user, statut=Quote.STATUT_ENVOYE, date_validite__gte=today)
             .select_related('client')
             .order_by('date_validite')[:DEADLINES_LIMIT]
         )

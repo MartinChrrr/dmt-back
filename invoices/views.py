@@ -38,8 +38,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     update:          PUT    /invoices/{id}/
     partial_update:  PATCH  /invoices/{id}/
     destroy:         DELETE /invoices/{id}/
-    changer_statut:  POST   /invoices/{id}/changer-statut/
+    changer_statut:  POST   /invoices/{id}/changer_statut/
     from_devis:      POST   /invoices/from-devis/
+    generate_pdf:    GET    /invoices/{id}/pdf/
     """
 
     serializer_class = InvoiceSerializer

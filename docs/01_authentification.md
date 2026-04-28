@@ -41,8 +41,7 @@ Une `UserConfiguration` avec les valeurs par défaut est automatiquement créée
 
 | Champ | Type | Requis | Description |
 |---|---|---|---|
-| `email` | string | oui | Adresse email (unique) |
-| `username` | string | oui | Nom d'utilisateur (unique) |
+| `email` | string | oui | Adresse email (unique). Sert aussi de `username`. |
 | `password` | string | oui | Mot de passe (validé par Django) |
 | `password_confirm` | string | oui | Confirmation du mot de passe |
 | `first_name` | string | oui | Prénom |
@@ -54,12 +53,13 @@ Une `UserConfiguration` avec les valeurs par défaut est automatiquement créée
 | `city` | string | non | Ville |
 | `phone` | string | non | Téléphone |
 
+> Le champ `username` n'est pas accepté en entrée : il est automatiquement renseigné avec la valeur de `email` lors de la création.
+
 **Exemple de requête :**
 
 ```json
 {
   "email": "jean.dupont@example.com",
-  "username": "jdupont",
   "password": "MonMotDePasse123!",
   "password_confirm": "MonMotDePasse123!",
   "first_name": "Jean",
@@ -80,7 +80,7 @@ Une `UserConfiguration` avec les valeurs par défaut est automatiquement créée
     "user": {
       "id": 1,
       "email": "jean.dupont@example.com",
-      "username": "jdupont",
+      "username": "jean.dupont@example.com",
       "first_name": "Jean",
       "last_name": "Dupont",
       "company_name": "Dupont SARL",
