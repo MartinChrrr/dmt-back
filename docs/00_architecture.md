@@ -33,8 +33,11 @@ back-pfr/
 ├── services/                # Catalogue de prestations
 ├── quotes/                  # Gestion des devis
 ├── invoices/                # Gestion des factures + PDF
+├── dashboard/               # Statistiques agrégées (lecture seule)
+├── administration/          # Endpoints admin RGPD (liste, effacement, export CSV)
 │
 ├── templates/invoices/      # Template HTML pour PDF facture
+├── templates/quotes/        # Template HTML pour PDF devis
 ├── requirements.txt
 ├── Dockerfile
 └── docker-compose.yml
@@ -50,6 +53,8 @@ back-pfr/
 | `/api/services/` | services | CRUD prestations |
 | `/api/quotes/` | quotes | CRUD devis + changement de statut |
 | `/api/invoices/` | invoices | CRUD factures + statut, PDF, conversion devis |
+| `/api/dashboard/` | dashboard | Statistiques agrégées (lecture seule) |
+| `/api/admin/` | administration | RGPD : liste utilisateurs, effacement, export CSV (admin uniquement) |
 
 ## Format de réponse — JSend
 
@@ -118,6 +123,8 @@ Les entités **Quote**, **QuoteLine**, **QuoteHistory**, **Invoice** et **Invoic
 - Le manager `all_objects` inclut tous les enregistrements
 - La suppression cascadée est gérée au niveau applicatif (pas SQL)
 
+À l'inverse, **InvoiceLine**, **Client**, **Address** et **Service** sont en suppression dure (pas de `deleted_at`).
+
 ## Isolation des données
 
 Chaque utilisateur ne voit que ses propres données. Le filtrage est effectué dans le `get_queryset()` de chaque ViewSet :
@@ -151,4 +158,4 @@ Format : `{PRÉFIXE}-{ANNÉE}-{NUMÉRO}` (ex. `DEV-2025-001`, `FAC-2025-042`)
 - **Devis** : le numéro est généré à la **création** du devis
 - **Factures** : le numéro est généré à la **transition vers le statut ENVOYEE** (pas à la création en brouillon)
 
-Le compteur est incrémenté via `UserConfiguration` avec un `select_for_update()` pour éviter les doublons en cas d'accès concurrent.
+Le compteur est incrémenté via `UserConfiguration`. Pour les **factures**, l'opération est protégée par `select_for_update()` afin d'éviter les doublons en cas d'accès concurrent ; la numérotation des **devis** ne pose pas ce verrou.

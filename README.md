@@ -38,6 +38,18 @@ docker compose exec web python manage.py createsuperuser
 - `GET /api/auth/me/` - Profil utilisateur
 - `PUT /api/auth/profile/` - Modifier profil
 
+### Dashboard
+
+- `GET /api/dashboard/stats/` - Statistiques agrégées (CA mensuel, en attente, échéances à venir, dernières transactions)
+
+### Administration (RGPD — admin uniquement, `is_staff=True`)
+
+- `GET /api/admin/users/` - Liste des utilisateurs avec compteurs (clients, devis, factures)
+- `DELETE /api/admin/users/<id>/` - Effacement définitif des données (droit à l'oubli, art. 17 RGPD)
+- `GET /api/admin/users/<id>/export/` - Export ZIP/CSV des données (droit à la portabilité, art. 20 RGPD)
+
+Voir [docs/08_administration.md](docs/08_administration.md) pour le détail.
+
 ## Exemples
 
 ### Inscription
@@ -68,6 +80,19 @@ curl -X POST http://localhost:8000/api/auth/login/ \
 ```bash
 curl -X GET http://localhost:8000/api/auth/me/ \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Export RGPD d'un utilisateur (admin)
+```bash
+curl -X GET http://localhost:8000/api/admin/users/12/export/ \
+  -H "Authorization: Bearer ADMIN_ACCESS_TOKEN" \
+  --output export_user_12.zip
+```
+
+### Effacement RGPD d'un utilisateur (admin)
+```bash
+curl -X DELETE http://localhost:8000/api/admin/users/12/ \
+  -H "Authorization: Bearer ADMIN_ACCESS_TOKEN"
 ```
 
 ## Commandes utiles
@@ -113,40 +138,47 @@ Superuser created successfully.
 ## Structure
 ```
 gestion-devis-factures/
-├── config/         # Configuration Django
-├── accounts/       # Authentification
-├── clients/        # Gestion clients (à venir)
-├── services/       # Catalogue prestations (à venir)
-├── quotes/         # Devis (à venir)
-├── invoices/       # Factures (à venir)
+├── config/           # Configuration Django
+├── accounts/         # Authentification, profil, configuration utilisateur
+├── clients/          # Gestion clients & adresses
+├── services/         # Catalogue prestations
+├── quotes/           # Devis
+├── invoices/         # Factures + génération PDF
+├── dashboard/        # Statistiques agrégées (lecture seule)
+├── administration/   # Endpoints admin RGPD (effacement, export CSV)
 └── docker-compose.yml
 ```
 
 
-## Tests clients
-# 1. Liste les fichiers de migration
-docker compose exec web ls -la clients/migrations/
+## Tests
 
-# 2. Vérifie l'état des migrations
-docker compose exec web python manage.py showmigrations clients
+Chaque module possède sa propre suite de tests Django. Lancer les tests d'un module :
 
-# 3. Recrée les migrations si nécessaire
-docker compose exec web python manage.py makemigrations clients
+```bash
+docker compose exec web python manage.py test <module> -v 2
+```
 
-# 4. Applique
+Modules testés :
+
+| Module | Commande |
+|---|---|
+| accounts | `docker compose exec web python manage.py test accounts -v 2` |
+| clients | `docker compose exec web python manage.py test clients -v 2` |
+| services | `docker compose exec web python manage.py test services -v 2` |
+| quotes | `docker compose exec web python manage.py test quotes -v 2` |
+| invoices | `docker compose exec web python manage.py test invoices -v 2` |
+| dashboard | `docker compose exec web python manage.py test dashboard -v 2` |
+| administration | `docker compose exec web python manage.py test administration -v 2` |
+
+Lancer toute la suite :
+
+```bash
+docker compose exec web python manage.py test -v 2
+```
+
+En cas d'échec lié aux migrations, régénérer et appliquer avant de relancer :
+
+```bash
+docker compose exec web python manage.py makemigrations <module>
 docker compose exec web python manage.py migrate
-
-# 5. Relance les tests
-docker compose exec web python manage.py test clients -v 2
-
-
-## Tests clients
-
-# 1. Crée ma mgration
-docker compose exec web python manage.py makemigrations accounts
-
-# 2. Applique
-docker compose exec web python manage.py migrate
-
-# 3. Lance les tests
-docker compose exec web python manage.py test accounts -v 2
+```

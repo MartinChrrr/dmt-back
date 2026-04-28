@@ -329,3 +329,25 @@ Change le statut d'un devis et crée une entrée d'historique.
 | Code HTTP | Cause |
 |---|---|
 | 400 | Statut invalide (valeur non reconnue) |
+
+---
+
+### GET `/api/quotes/{id}/pdf/` — Générer le PDF
+
+Génère et télécharge le PDF du devis.
+
+**Permissions :** Authentifié (le devis doit appartenir à l'utilisateur).
+
+**Réponse :** Fichier PDF en téléchargement (`Content-Type: application/pdf`).
+
+**Nom du fichier :** `{numero}.pdf` si le devis a déjà un numéro, sinon `draft-{id}.pdf`.
+
+**Adresse utilisée :** L'adresse de facturation (`FACTURATION`) du client est utilisée en priorité, avec fallback sur l'adresse du siège (`SIEGE`).
+
+**Note :** À la différence de `GET /api/invoices/{id}/pdf/`, la génération d'un PDF de devis ne déclenche **aucune transition de statut** ni création d'historique.
+
+**Erreurs possibles :**
+
+| Code HTTP | Cause |
+|---|---|
+| 404 | Devis inexistant ou n'appartenant pas à l'utilisateur |
