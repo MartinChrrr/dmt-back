@@ -30,5 +30,5 @@ COPY . /app/
 # Expose le port
 EXPOSE 8000
 
-# CHANGE CETTE LIGNE pour garder le conteneur actif
-CMD ["sleep", "infinity"]
+# Lance le script de démarrage par défaut (utilisé en prod sur Render)
+CMD ["./start.sh"]
