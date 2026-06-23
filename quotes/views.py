@@ -109,13 +109,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(quote)
-        return Response(
-            {
-                'message': 'Status changed successfully',
-                'data': serializer.data
-            },
-            status=status.HTTP_200_OK
-        )
+        return Response(serializer.data)
 
     # Action: generate PDF
     @action(detail=True, methods=['get'], url_path='pdf')
