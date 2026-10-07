@@ -58,7 +58,7 @@ class Invoice(SoftDeleteModel):
     devis_origine = models.OneToOneField(
         'quotes.Quote',
         on_delete=models.SET_NULL,
-        null=True,
+        #null=True,
         blank=True,
         related_name='facture',
         verbose_name='Devis d\'origine',
