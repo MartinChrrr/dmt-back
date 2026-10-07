@@ -59,7 +59,7 @@ class Quote(SoftDeleteModel):
         related_name='devis',
         verbose_name='Client'
     )
-    numero = models.CharField(max_length=50, unique=True, blank=True, verbose_name='Numéro')
+    numero = models.CharField(max_length=50, blank=True, verbose_name='Numéro')
     date_emission = models.DateField(default=date.today, verbose_name='Date d\'émission')
     date_validite = models.DateField(null=True, blank=True, verbose_name='Date de validité')
     statut = models.CharField(
@@ -82,6 +82,12 @@ class Quote(SoftDeleteModel):
         ordering = ['-date_emission', '-created_at']
         verbose_name = 'Devis'
         verbose_name_plural = 'Devis'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['utilisateur', 'numero'],
+                name='unique_numero_devis_par_utilisateur',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.numero}"
