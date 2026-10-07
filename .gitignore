@@ -27,3 +27,4 @@ staticfiles/
 .DS_Store
 
 .certif
+.docs

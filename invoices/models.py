@@ -58,14 +58,13 @@ class Invoice(SoftDeleteModel):
     devis_origine = models.OneToOneField(
         'quotes.Quote',
         on_delete=models.SET_NULL,
-        null=True,
+        #null=True,
         blank=True,
         related_name='facture',
         verbose_name='Devis d\'origine',
     )
     numero = models.CharField(
         max_length=50,
-        unique=True,
         null=True,
         blank=True,
         verbose_name='Numéro',
@@ -92,6 +91,12 @@ class Invoice(SoftDeleteModel):
         ordering = ['-date_emission', '-created_at']
         verbose_name = 'Facture'
         verbose_name_plural = 'Factures'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['utilisateur', 'numero'],
+                name='unique_numero_facture_par_utilisateur',
+            ),
+        ]
 
     def __str__(self):
         return self.numero or f"Draft #{self.pk}"
